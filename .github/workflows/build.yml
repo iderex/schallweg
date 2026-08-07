@@ -1,0 +1,80 @@
+# The build check.
+#
+# The first thing a gate has to be able to say is that the code builds. This job
+# says it from a clean checkout, with no cached build state, on every pull
+# request and on every push to the default branch.
+#
+# Warnings as errors needs a word, because Go has no warning level to turn up.
+# The compiler refuses the things another language would warn about: an unused
+# import and an unused local variable are hard errors, not diagnostics. So the
+# strictest available setting is the default one, and there is no flag to add.
+# What a warning level would otherwise catch is covered by `go vet` in the
+# format-and-vet job rather than repeated here.
+#
+# The build writes outside the working tree and the tree is then checked for any
+# file the build left behind, because `go build ./...` run from the root drops
+# the executable into the current directory, and an artefact sitting in a working
+# tree is how one gets committed.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to default to the job id, so renaming the job id cannot silently change the
+    # name a required-check list matches. Issue #36 collects the names to require.
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # Refuse a build that would change the module graph, and use exactly the
+      # toolchain set up below rather than fetching another one mid-build.
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The minimum version lives in go.mod and nowhere else.
+          go-version-file: go.mod
+          # No build cache: this check answers whether the code builds from a
+          # clean checkout, and a restored cache would let it answer a different
+          # question.
+          cache: false
+
+      - name: Build every package
+        run: |
+          set -euo pipefail
+          out="$(mktemp -d)"
+          go build -o "$out/" ./...
+          echo "Built into $out:"
+          ls -1 "$out"
+
+      - name: Refuse anything the build left in the tree
+        run: |
+          set -euo pipefail
+          left="$(git status --porcelain)"
+          if [ -n "$left" ]; then
+            echo "::error::The build left files in the working tree. Build output belongs outside it."
+            echo "$left"
+            exit 1
+          fi
+          echo "The working tree is unchanged by the build."
