@@ -1,0 +1,107 @@
+# Formatting and static checks.
+#
+# The tree is checked, never reformatted. A job that reformats hides the change
+# from the person who made it and produces a diff nobody wrote, so this one only
+# reports and fails.
+#
+# gofmt is the whole formatting rule for the code: one formatter, no options,
+# nothing to argue about in review. `go vet` is the language's own static check
+# and runs over every package with its default analyser set, which is the
+# strictest setting it has that is meant for a gate.
+#
+# The documentation checks below cover the tracked prose, and they cover exactly
+# two properties: no hard tab and no trailing whitespace. They do not check
+# wrapping, spelling, link targets or headings. What is claimed is what is run.
+name: Format and static checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+# Deny-all at workflow level; the job grants only what it needs.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-and-vet:
+    # This `name:` is the literal check-run name. It is set explicitly rather
+    # than left to default to the job id, so that renaming the job id later
+    # cannot silently change the name a required-check list matches. Issue #36
+    # collects the names to require.
+    name: format-and-vet
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # Refuse a build that would change the module graph, and use exactly the
+      # toolchain set up below rather than downloading another one.
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so do not leave the token in .git/config.
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The version comes from go.mod, so the gate and a contributor's
+          # machine are held to the same minimum and the file is the one place
+          # it is written.
+          go-version-file: go.mod
+
+      - name: Refuse an unformatted tree
+        run: |
+          set -euo pipefail
+          # gofmt -l prints the files that are not formatted and exits 0 either
+          # way, so the emptiness of the output is the verdict.
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::These files are not gofmt formatted. Run 'gofmt -w .' and commit the result."
+            echo "$unformatted"
+            exit 1
+          fi
+          echo "Every Go file is gofmt formatted."
+
+      - name: Static checks
+        run: |
+          set -euo pipefail
+          go vet ./...
+          echo "go vet found nothing."
+
+      - name: Documentation checks
+        run: |
+          set -euo pipefail
+          # git grep: 0 = a match was found, 1 = clean, >=2 = scanner error. Fail
+          # closed on an error rather than reading a broken scanner as a clean
+          # tree, the same way the unicode guard does.
+          fail=0
+
+          rc=0
+          git grep -nP '\t' -- '*.md' || rc=$?
+          case "$rc" in
+            0) echo "::error::Hard tab in tracked Markdown. Use spaces."; fail=1 ;;
+            1) echo "No hard tab in tracked Markdown." ;;
+            *) echo "::error::tab scan error (git grep exit $rc), failing closed."; exit 1 ;;
+          esac
+
+          rc=0
+          git grep -nP '[ \t]+$' -- '*.md' || rc=$?
+          case "$rc" in
+            0) echo "::error::Trailing whitespace in tracked Markdown."; fail=1 ;;
+            1) echo "No trailing whitespace in tracked Markdown." ;;
+            *) echo "::error::whitespace scan error (git grep exit $rc), failing closed."; exit 1 ;;
+          esac
+
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Documentation checks cover hard tabs and trailing whitespace only."
