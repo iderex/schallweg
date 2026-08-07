@@ -1,0 +1,26 @@
+# Line endings and text encoding.
+#
+# Tracked text is UTF-8 and its line ending is LF, in the repository and in every
+# working tree on every platform. This is not a preference about editors: this
+# project will hold fixtures whose exact bytes are the point, and a rule that
+# leaves normalisation to whatever each machine happens to do is a rule that
+# quietly rewrites them.
+#
+# `text=auto` lets git decide what is text and normalises it to LF on the way in.
+# `eol=lf` checks it back out as LF everywhere, including on Windows, so a
+# contributor there sees the same bytes the gate sees rather than a working tree
+# full of carriage returns their formatter then rejects.
+* text=auto eol=lf
+
+# The exemption route for byte-exact fixtures.
+#
+# A file under any `testdata/byte-exact/` directory is marked `-text`, which tells
+# git to treat it as binary: nothing normalises it on the way in, nothing
+# rewrites it on the way out, and the bytes in the tree are the bytes the test
+# reads. Put a fixture here when its carriage returns, its encoding or its
+# missing final newline are the thing under test.
+#
+# The cost is stated rather than hidden: a `-text` file shows in a diff as a
+# binary blob, so a reviewer cannot read the change. Use this directory for
+# fixtures whose bytes matter and for nothing else.
+testdata/byte-exact/** -text

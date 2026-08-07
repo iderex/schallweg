@@ -1,0 +1,92 @@
+# The line ending and encoding rule, enforced.
+#
+# `.gitattributes` states the rule: tracked text is UTF-8 with LF, and a file
+# under a `testdata/byte-exact/` directory is marked `-text` so nothing
+# normalises it. This job refuses a tree that breaks either half.
+#
+# It reads what git recorded rather than what the working tree happens to hold.
+# `git ls-files --eol` reports, per tracked file, the line ending in the index,
+# the line ending in the working tree, and the attributes in force. The index
+# column is the one that matters: it is what every other clone will receive.
+#
+# Two legs, and the second is the one that is easy to forget. A `-text` file is
+# invisible in review, it shows as a binary blob, so the exemption may only be
+# used where a reader expects it. A `-text` file anywhere else fails, which keeps
+# the exemption a route rather than a hole.
+#
+# This is not the unicode guard and does not replace it. That guard refuses
+# bidirectional and invisible control characters anywhere in tracked text, which
+# is a rule about what a reader is shown. This one is about line endings and
+# about which files git may normalise. Neither covers the other: a file can be
+# pure LF and still carry a bidirectional override, and a file can be free of
+# control characters and still arrive with carriage returns.
+name: Text rules
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  text-rules:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to default to the job id, so renaming the job id cannot silently change the
+    # name a required-check list matches. Issue #36 collects the names to require.
+    name: text-rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Refuse a line ending or an exemption the rule does not allow
+        run: |
+          set -euo pipefail
+          # `git ls-files --eol` writes one line per tracked file: the three
+          # columns, then a tab, then the path. Splitting on the tab is what
+          # keeps a path with spaces in it intact.
+          if ! listing="$(git ls-files --eol)"; then
+            echo "::error::Could not read the tracked file list. Failing closed."
+            exit 1
+          fi
+          if [ -z "$listing" ]; then
+            echo "::error::The tracked file list is empty. Failing closed rather than passing a tree nobody read."
+            exit 1
+          fi
+
+          printf '%s\n' "$listing" | awk -F'\t' '
+            {
+              meta = $1
+              path = $2
+              exempt = (meta ~ /attr\/.*-text/)
+              if (exempt) {
+                if (path !~ /(^|\/)testdata\/byte-exact\//) {
+                  printf "::error file=%s::marked -text but not under a testdata/byte-exact/ directory. A -text file reviews as a binary blob, so the exemption is only allowed where a reader expects it.\n", path
+                  bad++
+                }
+                next
+              }
+              if (meta ~ /i\/crlf/ || meta ~ /i\/mixed/) {
+                printf "::error file=%s::recorded with CRLF or mixed line endings. Tracked text is LF; run git add --renormalize . and commit the result.\n", path
+                bad++
+              }
+            }
+            END {
+              if (bad > 0) {
+                printf "%d file(s) break the text rules.\n", bad
+                exit 1
+              }
+              printf "%d tracked file(s) checked, all within the text rules.\n", NR
+            }
+          '
