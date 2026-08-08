@@ -24,8 +24,10 @@
 #
 # The gate fails on any finding rather than filing it for later. A finding that
 # is deliberately accepted is written into the source as a suppression that names
-# the analyser, the rule and the reason, and the second job below refuses one
-# that names less than that.
+# the analyser, the rule and the reason: the analyser reads the first two and
+# marks the finding suppressed, and the second job below refuses a marker that
+# gives less than all three. The count of accepted findings is printed on every
+# run, so accepting one is visible rather than a way of making it disappear.
 #
 # It also runs weekly. A rule set that improves finds things in code nobody
 # touched, and nothing else in this repository would notice.
@@ -126,20 +128,33 @@ jobs:
             echo "::error::The analyser produced no SARIF file. Failing closed rather than reading an absent result as a clean one."
             exit 1
           fi
+          # A finding the source suppresses is counted separately and printed
+          # rather than dropped. An accepted finding that becomes invisible is
+          # how a suppression turns into a hiding place, and the second job below
+          # is what makes the acceptance carry its reason.
           total=0
+          accepted=0
           for f in "${files[@]}"; do
-            n="$(jq '[.runs[].results[]?] | length' "$f")"
-            echo "$f: $n finding(s)"
+            n="$(jq '[.runs[].results[]? | select((.suppressions // []) | length == 0)] | length' "$f")"
+            s="$(jq '[.runs[].results[]? | select((.suppressions // []) | length > 0)] | length' "$f")"
+            echo "$f: $n finding(s), $s deliberately accepted"
             total=$((total + n))
+            accepted=$((accepted + s))
           done
+          if [ "$accepted" -ne 0 ]; then
+            echo "Accepted in the source:"
+            for f in "${files[@]}"; do
+              jq -r '.runs[].results[]? | select((.suppressions // []) | length > 0) | "  \(.ruleId) at \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' "$f"
+            done
+          fi
           if [ "$total" -ne 0 ]; then
             echo "::error::The analyser reported ${total} finding(s). Fix them, or accept one deliberately with a suppression naming the analyser, the rule and the reason."
             for f in "${files[@]}"; do
-              jq -r '.runs[].results[]? | "  \(.ruleId): \(.message.text) at \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' "$f"
+              jq -r '.runs[].results[]? | select((.suppressions // []) | length == 0) | "  \(.ruleId): \(.message.text) at \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' "$f"
             done
             exit 1
           fi
-          echo "The analyser reported nothing."
+          echo "The analyser reported nothing that is not deliberately accepted."
 
       - name: Say what this job did not cover
         run: |
