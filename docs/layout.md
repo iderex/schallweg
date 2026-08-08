@@ -61,21 +61,32 @@ thing worth saying is a field in the result.
 
 ## What enforces the rule
 
-Nothing. This is stated rather than left to be inferred from the absence of a
-check.
+`cmd/gate/architecture.go`, read by the tests beside it, which the `test` leg of
+`go run ./cmd/gate` runs. What it refuses is printed by that suite rather than
+listed here.
 
-The layout makes a violation visible in a diff, which is worth having and is not
-enforcement. The language does not help: the file system and the network are in
-the standard library and any package may import them.
+Until issue #109 landed this section said that nothing enforced any of it. What
+it refuses now is the import graph the toolchain reports and the syntax of every
+non-test source file: a package in `acoustic/` or `kernel/` that reaches the file
+system, the network, another program or the process's surroundings; a package
+importing a layer above its own; a package in `store/` importing `math`; a print
+below `cmd/`; a logarithm or an exponential outside `acoustic/`; and a package of
+this module in no layer at all. Each rule has a test that breaks it deliberately
+and a near miss beside it that must go on passing.
 
-What would enforce it is a test that reads the transitive import graph of every
-package in `kernel/` and `acoustic/` and fails when it reaches one that performs
-input or output. The toolchain already prints that graph, so it is an ordinary
-test rather than a new tool. It belongs with the architecture rules work in issue
-#109, and until it lands the rule is held by review.
-
-The residual, plainly: between now and that test, a change can put a file read
-inside the kernel and every run stays green.
+**What it still does not reach, which is more than the paragraph above may
+suggest.** The graph rule reads what a package asks for by name and not what the
+linker pulls in, because every package that returns a formatted error has `os` in
+its full dependency list, so a rule written over that list would fire on all of
+them and say nothing. What follows is that a package can perform input or output
+through something it does not name: through a third-party package, which the tree
+has none of today and the dependency policy is what keeps that true, or through
+the standard library reached by a route this list does not hold. Whether the data
+access layer *calculates* is not decided by anything; what is decided is whether
+it imports `math`, which is the part of that sentence a machine can read. And no
+rule here sees a test file, so a test in any layer may read a fixture and write
+its own arithmetic out by hand, which is how a test in this project is supposed
+to work.
 
 ## Where the database lives, and when it is released
 

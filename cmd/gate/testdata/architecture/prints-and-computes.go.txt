@@ -1,0 +1,28 @@
+// A file that breaks both source rules, in every spelling the reader claims to
+// see. It is read as a fixture and never built, so its import paths and its
+// arithmetic do not have to make sense together.
+
+package kernel
+
+import (
+	"fmt"
+	"math"
+	"os"
+)
+
+// Prints five ways.
+func report(total float64) {
+	fmt.Print("the total is ")
+	fmt.Printf("%v\n", total)
+	fmt.Println(total)
+	fmt.Fprintln(os.Stdout, total)
+	println(total)
+}
+
+// Computes a decibel arithmetic four ways, which is what belongs in one place.
+func combine(a, b float64) float64 {
+	ea := math.Pow(10, a/10)
+	eb := math.Exp(b / 10)
+	total := 10 * math.Log10(ea+eb)
+	return total + math.Log(2)
+}
