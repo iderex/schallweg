@@ -252,6 +252,46 @@ func TestSomethingThatIsNotADocumentIsRefused(t *testing.T) {
 	}
 }
 
+// TestSpacingIsRefusedAsSpacing is a guard that changes the message rather than
+// the verdict, and it is here because that is the only thing it does.
+//
+// A line whose spacing is wrong is refused either way: the field count comes out
+// wrong. What the spacing check adds is a refusal that says the spacing is
+// wrong, and the alternative is a reader telling a transcriber that this line
+// has four fields, which sends them to count fields on a line whose fields are
+// all correct. Deleting the check leaves the document refused and this assertion
+// red, which is the whole claim being made for it.
+func TestSpacingIsRefusedAsSpacing(t *testing.T) {
+	good, err := os.ReadFile(filepath.Join("testdata", "wall-r-core.spectrum"))
+	if err != nil {
+		t.Fatalf("reading the fixture: %v", err)
+	}
+
+	for _, c := range []struct {
+		name string
+		from string
+		to   string
+	}{
+		{"a trailing space", "band 100 33.4", "band 100 33.4 "},
+		{"a leading space", "band 100 33.4", " band 100 33.4"},
+		{"two spaces where one belongs", "band 100 33.4", "band 100  33.4"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			in := strings.Replace(string(good), c.from, c.to, 1)
+			if in == string(good) {
+				t.Fatalf("the fixture does not contain %q, so this case changes nothing", c.from)
+			}
+			_, err := Read(c.name, strings.NewReader(in))
+			if !errors.Is(err, ErrLineShape) {
+				t.Fatalf("reading it returned %v, want ErrLineShape", err)
+			}
+			if !strings.Contains(err.Error(), "exactly one space") {
+				t.Errorf("the refusal is %q, and it should say what is wrong with the spacing", err)
+			}
+		})
+	}
+}
+
 // TestCarriageReturnsDoNotChangeADocument reads the byte-exact fixture, whose
 // line endings are the point and which is therefore exempt from this
 // repository's line ending normalisation.
@@ -298,8 +338,21 @@ func TestCarriageReturnsDoNotChangeADocument(t *testing.T) {
 // which means it cannot by itself distinguish an exact round trip from one that
 // loses a digit. Writing the spectrum that came back and comparing the two
 // documents as text can, and a string comparison needs no tolerance.
+//
+// It runs over two fixtures, and the second is the one that says anything. Every
+// value in the first has one decimal place, so a writer that rounded to one
+// decimal place would produce the same bytes and this test would pass while that
+// writer destroyed everything below a tenth of a decibel. The values in
+// full-precision.spectrum need the full width, so that writer reddens the run.
 func TestWritingAndReadingReturnsTheSameSpectrum(t *testing.T) {
-	original := mustRead(t, "wall-r-core.spectrum")
+	for _, fixture := range []string{"wall-r-core.spectrum", "full-precision.spectrum"} {
+		t.Run(fixture, func(t *testing.T) { roundTrip(t, fixture) })
+	}
+}
+
+func roundTrip(t *testing.T, fixture string) {
+	t.Helper()
+	original := mustRead(t, fixture)
 
 	var first strings.Builder
 	if err := Write(&first, original.Quantity, original.Spectrum); err != nil {
