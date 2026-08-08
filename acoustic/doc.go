@@ -14,7 +14,8 @@
 // a struct rather than a named float, so adding two decibel values does not
 // compile, and every sum runs in one defined order.
 //
-// The package is empty today. Issue #39 adds the spectrum type, issue #40 the
-// band arithmetic, and issue #41 the conversions between octave and third-octave
-// bands.
+// What is here today is the container: BandSet, Band and Spectrum, together with
+// the refusals a caller can test for. It holds values and knows nothing about
+// what they mean. The decibel quantity types are issue #40 and the conversions
+// between octave and third-octave bands are issue #41.
 package acoustic
