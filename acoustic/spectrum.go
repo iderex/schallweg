@@ -45,9 +45,10 @@ var (
 //
 // What the values mean is not decided here. They are the numbers of whatever
 // quantity the caller is holding, in decibels for every quantity this project
-// computes. The decibel quantity types that stop two levels being added are
-// issue #40, and this container is written so that they arrive without it
-// changing shape.
+// computes. The decibel quantity types that stop two levels being added are in
+// level.go, and they arrived without this container changing shape: LevelsOf and
+// SpectrumOfLevels are the boundary between the two, and the arithmetic between
+// them cannot be written with an operator.
 type Spectrum struct {
 	set BandSet
 	// values is never handed out. Bands are read one at a time through At, so
@@ -144,9 +145,9 @@ func (s Spectrum) At(b Band) (float64, error) {
 // overlap, which is the refusal the whole container is for: the two defined sets
 // share thirteen nominal frequencies, so an overlap is always available and
 // always wrong. It is deliberately the only combining operation here, and it
-// knows nothing about decibels. What the arithmetic is, energy sums and level
-// differences, is issue #40, and it is written as functions passed to this
-// rather than as methods that would put arithmetic in the container.
+// knows nothing about decibels. The arithmetic, energy sums and level
+// differences, is in level.go, and it is written beside this rather than as
+// methods that would put arithmetic in the container.
 func (s Spectrum) Combine(other Spectrum, f func(a, b float64) float64) (Spectrum, error) {
 	if s.set == 0 || other.set == 0 {
 		return Spectrum{}, fmt.Errorf("%w: one of these spectra was never constructed", ErrUnknownBandSet)
