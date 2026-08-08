@@ -22,12 +22,14 @@
 # are the defects this project has to fear most, and they are the validation
 # corpus's problem rather than this gate's.
 #
-# The gate fails on any finding rather than filing it for later. A finding that
-# is deliberately accepted is written into the source as a suppression that names
-# the analyser, the rule and the reason: the analyser reads the first two and
-# marks the finding suppressed, and the second job below refuses a marker that
-# gives less than all three. The count of accepted findings is printed on every
-# run, so accepting one is visible rather than a way of making it disappear.
+# The gate fails on any finding rather than filing it for later. A finding may
+# still be accepted deliberately, by a suppression in the source that names the
+# analyser, the rule and the reason, and both halves of that are this
+# repository's own: the step below reads the suppression out of the source and
+# decides, and the second job refuses a marker that gives less than all three.
+# Why it is read here rather than left to the analyser is written at the step,
+# with what was measured. The count of accepted findings is printed on every run,
+# so accepting one is visible rather than a way of making it disappear.
 #
 # It also runs weekly. A rule set that improves finds things in code nobody
 # touched, and nothing else in this repository would notice.
@@ -119,7 +121,23 @@ jobs:
           sarif_file: sarif-results
           category: codeql-go
 
-      - name: Fail on a finding
+      - name: Fail on a finding that is not deliberately accepted
+        # How an accepted finding is recognised, and why it is done here.
+        #
+        # The analyser's own in-source suppression comment does not reach this
+        # step. Measured on the branch named in issue #25: with
+        # `codeql[go/disabled-certificate-check]: <reason>` on the line above the
+        # alert, the SARIF still carried the result and carried no `suppressions`
+        # entry on it. So a gate reading only the SARIF would have no acceptance
+        # route at all, and the only remaining one would be dismissing the alert
+        # in the hosting service's own interface, which is a decision a reader of
+        # this repository cannot see.
+        #
+        # So the acceptance is read from the source, here, by this repository:
+        # a finding is accepted when the line it is on, or the line above it,
+        # carries `codeql[<the rule that fired>]: <a reason>`. The rule id has to
+        # match the finding, so a suppression cannot be written once and then
+        # silence a different defect that lands on the same line later.
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -128,33 +146,36 @@ jobs:
             echo "::error::The analyser produced no SARIF file. Failing closed rather than reading an absent result as a clean one."
             exit 1
           fi
-          # A finding the source suppresses is counted separately and printed
-          # rather than dropped. An accepted finding that becomes invisible is
-          # how a suppression turns into a hiding place, and the second job below
-          # is what makes the acceptance carry its reason.
-          total=0
+
+          unaccepted=0
           accepted=0
           for f in "${files[@]}"; do
-            n="$(jq '[.runs[].results[]? | select((.suppressions // []) | length == 0)] | length' "$f")"
-            s="$(jq '[.runs[].results[]? | select((.suppressions // []) | length > 0)] | length' "$f")"
-            echo "$f: $n finding(s), $s deliberately accepted"
-            total=$((total + n))
-            accepted=$((accepted + s))
+            while IFS=$'\t' read -r rule uri line message; do
+              [ -n "$rule" ] || continue
+              hit=""
+              for probe in "$line" "$((line - 1))"; do
+                if [ "$probe" -ge 1 ] && [ -f "$uri" ]; then
+                  text="$(sed -n "${probe}p" "$uri" || true)"
+                  if printf '%s' "$text" | grep -qP "codeql\[${rule}\]:[[:space:]]+[^[:space:]]"; then
+                    hit="$probe"
+                  fi
+                fi
+              done
+              if [ -n "$hit" ]; then
+                accepted=$((accepted + 1))
+                echo "accepted  ${rule} at ${uri}:${line}, by the suppression on line ${hit}"
+              else
+                unaccepted=$((unaccepted + 1))
+                echo "FINDING   ${rule} at ${uri}:${line}: ${message}"
+              fi
+            done < <(jq -r '.runs[].results[]? | select((.suppressions // []) | length == 0) | [.ruleId, .locations[0].physicalLocation.artifactLocation.uri, (.locations[0].physicalLocation.region.startLine | tostring), .message.text] | @tsv' "$f")
           done
-          if [ "$accepted" -ne 0 ]; then
-            echo "Accepted in the source:"
-            for f in "${files[@]}"; do
-              jq -r '.runs[].results[]? | select((.suppressions // []) | length > 0) | "  \(.ruleId) at \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' "$f"
-            done
-          fi
-          if [ "$total" -ne 0 ]; then
-            echo "::error::The analyser reported ${total} finding(s). Fix them, or accept one deliberately with a suppression naming the analyser, the rule and the reason."
-            for f in "${files[@]}"; do
-              jq -r '.runs[].results[]? | select((.suppressions // []) | length == 0) | "  \(.ruleId): \(.message.text) at \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' "$f"
-            done
+
+          echo "${unaccepted} finding(s), ${accepted} deliberately accepted."
+          if [ "$unaccepted" -ne 0 ]; then
+            echo "::error::The analyser reported ${unaccepted} finding(s) nothing accepts. Fix them, or accept one deliberately with codeql[<rule>]: <reason> on the line or the line above."
             exit 1
           fi
-          echo "The analyser reported nothing that is not deliberately accepted."
 
       - name: Say what this job did not cover
         run: |
