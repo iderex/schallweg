@@ -16,6 +16,7 @@ import (
 // purpose this project would want one for. The defect is the algorithm, not the
 // code around it.
 func Fingerprint(id string) string {
+	// codeql[go/weak-cryptographic-algorithm]
 	sum := md5.Sum([]byte(id))
 	return hex.EncodeToString(sum[:])
 }
@@ -24,5 +25,6 @@ func Fingerprint(id string) string {
 // offered. Nothing in this project makes a connection, which is exactly why a
 // line like this one would be easy to miss in review.
 func TransportConfig() *tls.Config {
+	//nolint
 	return &tls.Config{InsecureSkipVerify: true}
 }
