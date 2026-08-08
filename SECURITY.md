@@ -1,5 +1,10 @@
 # Security policy
 
+The reasoning behind what is in and out of scope below, and what this project
+takes itself to be protecting, is [docs/threat-model.md](docs/threat-model.md).
+This document is the one a reporter needs; that one is the one an implementer
+needs.
+
 ## Reporting
 
 Report privately, through this repository's own private reporting route:
