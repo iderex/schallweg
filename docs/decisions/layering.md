@@ -66,27 +66,25 @@ and a thing worth saying is a field in the result.
 
 ## What enforces this today
 
-Nothing, and this section exists so that sentence is on the record rather than
-implied by its absence.
+The tests beside `cmd/gate/architecture.go`, which the ordinary suite runs. Both
+of the two rules above are among what they refuse, and [../layout.md](../layout.md)
+is where the whole set and its limits are written, so that this document and that
+one do not each carry a list that drifts.
 
-The directory layout makes a violation visible in a diff, which is worth having
-and is not enforcement. The language's own import rules do not help here, because
-the file system and the network are in the standard library and any package may
-import them.
+This section said that nothing enforced any of it until issue #109 landed, and
+the sentence it replaces was right at the time. The residual it named was that a
+change could put a file read inside the kernel and every run would stay green,
+and that particular residual is gone: a package in the kernel or the numeric
+floor that reaches the file system is refused, whether it reaches it directly or
+through another package of this module.
 
-What would enforce it is a test that reads the import graph of every package in
-the kernel and below, transitively, and fails when it reaches a package that
-performs I/O. That is an ordinary test rather than a new tool: the toolchain
-prints the transitive import list for a package, and the assertion is a set
-difference against an allowed list. It belongs with the architecture rules work
-in the quality milestone, issue #109, and until it lands the rules above are held
-by review.
-
-The residual is stated plainly. Between now and that test, a change can put a
-file read inside the kernel and every run will stay green. The thing most likely
-to do it is not carelessness but convenience, and specifically loading a
-reference dataset from inside the function that needs it, which is exactly the
-shape [standard-text.md](standard-text.md) pushes towards the data access layer.
+What survives is narrower and is stated rather than left implied. The rule reads
+what a package asks for by name, so input or output reached through a package
+that does not name it is not seen, and the thing most likely to do that is the
+convenience this section already named: loading a reference dataset from inside
+the function that needs it, which [standard-text.md](standard-text.md) pushes
+towards the data access layer. What makes that convenience visible is that the
+dataset has to come from somewhere, and the somewhere is an import.
 
 ## Whether the kernel is a public library
 

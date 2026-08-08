@@ -1,0 +1,13 @@
+// The same two rules broken through renamed imports, which is what a reader
+// matching on the literal text of a call would miss.
+
+package kernel
+
+import (
+	stdfmt "fmt"
+	maths "math"
+)
+
+func report(a, b float64) {
+	stdfmt.Println(maths.Log10(a + b))
+}

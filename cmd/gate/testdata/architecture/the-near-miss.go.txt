@@ -1,0 +1,32 @@
+// Every line here is one identifier away from a line in the fixture that breaks
+// the rules, and every one of them is legal in any layer.
+
+package kernel
+
+import (
+	"fmt"
+	"math"
+	"strings"
+)
+
+// Formatting is not printing. A returned error and a built string are how a
+// layer below the command line says something.
+func describe(total float64) (string, error) {
+	var b strings.Builder
+	fmt.Fprintf(&b, "the total is %v", total)
+	if total < 0 {
+		return "", fmt.Errorf("the total is %v, which is not a level", total)
+	}
+	return fmt.Sprintf("%s\n", b.String()), nil
+}
+
+// Arithmetic that is not a logarithm or an exponential. Every one of these is a
+// function of the same package and none of them is decibel arithmetic.
+func geometry(area, length float64) float64 {
+	return math.Sqrt(area) + math.Abs(length) + math.Max(area, length) + math.Round(area)
+}
+
+// An identifier that happens to be spelled like one of the rules is not one.
+type math2 struct{ Log float64 }
+
+func (m math2) value() float64 { return m.Log }
