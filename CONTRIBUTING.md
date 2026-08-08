@@ -97,6 +97,68 @@ The line has to match the author name and email of the commit it is on, so
 `git commit -s` after changing your git identity produces a line that does not
 match and is refused.
 
+## Sign your commits, before it is required
+
+A sign-off is a line of text that anybody can type. A signature is a
+cryptographic claim that the person who holds a particular key made the commit,
+and the hosting service shows it as verified.
+
+The branch rule here does not require one today:
+
+```
+gh api repos/iderex/schallweg/rulesets/20527526 --jq '{types: [.rules[].type]}'
+{"types":["deletion","non_fast_forward","pull_request"]}
+```
+
+Asking for that to change is issue #112. This section exists before the change
+rather than after it, because the cost of arriving at a required signature
+without having set one up falls on whoever is in the middle of a branch at the
+time.
+
+Signing with an SSH key you already have is the shortest route:
+
+```
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+```
+
+Then add that same public key to your account a second time, as a signing key
+rather than an authentication key. They are separate lists and a key in only the
+first one produces a signature the service cannot verify. A GPG key works as
+well and is set up the same way without the `gpg.format` line.
+
+Check a commit you have already made:
+
+```
+git log -1 --format='%G? %GS'
+```
+
+`G` is a good signature. `N` is none.
+
+### What it costs, and the one thing not to do when it fails
+
+Once the rule is on, every commit in a branch's history has to be signed. One
+unsigned commit anywhere in it refuses the merge, however old it is and whoever
+made it. A branch that already contains one is repaired by rebuilding it: create
+a fresh branch from the base, cherry-pick each commit onto it with signing on,
+and compare `git patch-id` on both sides to show the content is identical. That
+is more work than it sounds like and it is the reason this section is here early.
+
+Signing fails sometimes. An agent is not running, a key has been rotated, a
+smartcard is not present. The failure arrives in the middle of the work and the
+way around it is one word:
+
+```
+git commit --no-gpg-sign
+git -c commit.gpgsign=false commit
+```
+
+Do not take it, in either spelling. Fix the signing. Nothing in this repository
+refuses either of them, so a commit made that way builds, tests and reviews
+exactly like a good one, and the only thing that says otherwise is the merge, at
+the end of the line, when the whole branch has to be rebuilt.
+
 ## Text in this repository
 
 Tracked text is UTF-8 with LF line endings, in the repository and in every
