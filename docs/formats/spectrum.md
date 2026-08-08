@@ -125,9 +125,19 @@ document with any missing band is refused, and the refusal names the quantity an
 every band that was missing rather than the first one, so a transcriber learns
 the size of what they have to go and find.
 
-Missing rather than omitted is the whole point. A band left out of the document
-is indistinguishable from a document that was truncated, and both are then
-indistinguishable from a band whose value is zero, which in decibels is not
+A band with no line at all is refused the same way and by the same name. To a
+calculation the two are one absence, so the reader treats them as one: a
+document that declares the core set and carries fifteen of its bands is refused
+naming the sixteenth, rather than by a count that leaves a transcriber to work
+out which one it was. That holds only where every band centre in the document
+belongs to the declared set. A document carrying a band the set does not have is
+a different defect, the declaration and the bands disagreeing, and it is refused
+as that.
+
+Missing rather than omitted still says more, and that is why the word exists. A
+band written as missing says a laboratory looked and has no value; a band left
+out says nothing, and is indistinguishable from a document that was truncated on
+the way here. Neither is a band whose value is zero, which in decibels is not
 absence but a very quiet band.
 [../decisions/frequency-bands.md](../decisions/frequency-bands.md) is where that
 is argued, and it is why the reader refuses rather than filling the band in.

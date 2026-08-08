@@ -101,10 +101,17 @@ func TestADocumentWhoseDeclaredAndActualBandsDisagreeIsRefused(t *testing.T) {
 
 // TestADocumentWithTheWrongNumberOfBandsIsRefused covers the other half: the
 // bands are the set's own, and one of them is not there.
+//
+// The refusal names the band rather than the count. A count tells a transcriber
+// that one of sixteen is missing and leaves them to find out which, and the one
+// that is missing is the one they are least likely to look at.
 func TestADocumentWithTheWrongNumberOfBandsIsRefused(t *testing.T) {
 	_, err := read(t, "one-band-short.spectrum")
-	if !errors.Is(err, acoustic.ErrBandCount) {
-		t.Fatalf("reading it returned %v, want ErrBandCount", err)
+	if !errors.Is(err, ErrMissingBands) {
+		t.Fatalf("reading it returned %v, want ErrMissingBands", err)
+	}
+	if !strings.Contains(err.Error(), "3150 Hz") {
+		t.Errorf("the refusal is %q, and it does not name 3150 Hz", err)
 	}
 }
 

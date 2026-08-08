@@ -40,9 +40,16 @@ var (
 	// quantities occupies, which is how a frequency column pasted into the
 	// value column is caught.
 	ErrImplausible = errors.New("value is outside the plausible range")
-	// ErrMissingBands is a document recording one or more bands as missing. The
-	// format can express it and a spectrum cannot hold it.
-	ErrMissingBands = errors.New("document records bands as missing")
+	// ErrMissingBands is a document that has no value in one or more bands of
+	// the set it declares. The format can express that and a spectrum cannot
+	// hold it.
+	//
+	// Two ways in and one refusal out. A band written as missing says so, and a
+	// band with no line at all says nothing, and to a calculation the two are
+	// the same absence. Refusing them apart would let the second arrive as a
+	// count that names no band, which is the message a transcriber cannot act
+	// on.
+	ErrMissingBands = errors.New("document has no value in a band of its set")
 )
 
 // The plausible range for a band value, in decibels.
@@ -285,7 +292,7 @@ func readBands(name string, lines []string, quantity Quantity, set acoustic.Band
 	body := lines[1+len(headerKeys):]
 	nominals := make([]int, 0, len(body))
 	values := make([]float64, 0, len(body))
-	var missing []string
+	var recordedMissing []int
 
 	for i, line := range body {
 		n := i + 2 + len(headerKeys)
@@ -305,7 +312,7 @@ func readBands(name string, lines []string, quantity Quantity, set acoustic.Band
 		nominals = append(nominals, nominal)
 
 		if parts[2] == missingToken {
-			missing = append(missing, fmt.Sprintf("%d Hz", nominal))
+			recordedMissing = append(recordedMissing, nominal)
 			values = append(values, 0)
 			continue
 		}
@@ -320,9 +327,9 @@ func readBands(name string, lines []string, quantity Quantity, set acoustic.Band
 		values = append(values, v)
 	}
 
-	if len(missing) > 0 {
+	if absent := absentBands(set, nominals, recordedMissing); len(absent) > 0 {
 		return Document{}, fmt.Errorf("%s: %w: %s has no value at %s, and a spectrum has a value in every band of its set",
-			name, ErrMissingBands, quantity, strings.Join(missing, ", "))
+			name, ErrMissingBands, quantity, strings.Join(absent, ", "))
 	}
 
 	spectrum, err := acoustic.New(set, nominals, values)
@@ -330,6 +337,56 @@ func readBands(name string, lines []string, quantity Quantity, set acoustic.Band
 		return Document{}, fmt.Errorf("%s: the document declares the %s: %w", name, set, err)
 	}
 	return Document{Quantity: quantity, Spectrum: spectrum}, nil
+}
+
+// absentBands is the bands of the declared set the document supplied no value
+// for, named and in the set's order.
+//
+// It is where a band written as missing and a band with no line at all become
+// one refusal. A laboratory that reports from 100 Hz where the calculation wants
+// 50 Hz, a certificate that stops at 3150 Hz, and a manufacturer's summary of
+// four values are the same defect arriving in three shapes, and a reader that
+// answered the first with a named band and the others with a count would be
+// telling a transcriber to go and find out which band on two of the three.
+//
+// The second half is computed only when every band centre in the document
+// belongs to the declared set. A document carrying a band the set does not have
+// is a different defect, the declared set and the actual bands disagreeing, and
+// naming the set's own bands as absent there would describe it wrongly: the
+// spectrum's constructor is what names that one and it says which position
+// disagrees.
+func absentBands(set acoustic.BandSet, supplied, recordedMissing []int) []string {
+	inSet := map[int]bool{}
+	for _, n := range set.Nominals() {
+		inSet[n] = true
+	}
+	present := map[int]bool{}
+	for _, n := range supplied {
+		if !inSet[n] {
+			return names(recordedMissing)
+		}
+		present[n] = true
+	}
+	for _, n := range recordedMissing {
+		present[n] = false
+	}
+
+	out := make([]string, 0, len(set.Nominals()))
+	for _, n := range set.Nominals() {
+		if !present[n] {
+			out = append(out, fmt.Sprintf("%d Hz", n))
+		}
+	}
+	return out
+}
+
+// names writes band centres the way a refusal says them.
+func names(nominals []int) []string {
+	out := make([]string, 0, len(nominals))
+	for _, n := range nominals {
+		out = append(out, fmt.Sprintf("%d Hz", n))
+	}
+	return out
 }
 
 // wholeNumber parses a run of ASCII digits and nothing else. It refuses a sign,
