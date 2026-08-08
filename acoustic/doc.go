@@ -16,6 +16,7 @@
 //
 // What is here today is the container: BandSet, Band and Spectrum, together with
 // the refusals a caller can test for. It holds values and knows nothing about
-// what they mean. The decibel quantity types are issue #40 and the conversions
-// between octave and third-octave bands are issue #41.
+// what they mean. Beside it, in octave.go, are the octave bands and the one
+// conversion that is defined between them and third-octave bands. The decibel
+// quantity types are issue #40.
 package acoustic
