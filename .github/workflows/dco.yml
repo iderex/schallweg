@@ -6,8 +6,9 @@
 # i.e. the author asserted the DCO in ./DCO. Fail-closed: any unsigned commit reds
 # the check.
 #
-# The failure message below points at ./DCO and at CONTRIBUTING.md. Neither file is
-# in the tree yet; issues #33 and #34 add them.
+# The failure message below points at ./DCO and at CONTRIBUTING.md. Both are in the
+# tree: ./DCO carries the certificate text unmodified, and CONTRIBUTING.md says what
+# signing off asserts and how to add the line.
 name: DCO
 
 on:

@@ -52,6 +52,10 @@ Every commit needs a `Signed-off-by` line matching its author. It is how you
 assert the Developer Certificate of Origin, and the sign-off check refuses a pull
 request where any commit lacks one.
 
+What you are asserting is in [DCO](DCO), which is the certificate text
+unmodified. It is short, it is the thing your sign-off points at, and it is worth
+reading once.
+
 ```
 git commit -s
 ```
