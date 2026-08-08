@@ -9,6 +9,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 // version is the version of this program.
@@ -34,5 +36,8 @@ func main() {
 // need more of the machine than the testability rule allows the ordinary suite to
 // need.
 func versionLine() string {
+	// Proof only. This call exists so a dependency is linked into the binary
+	// and the bill of materials has something to report.
+	_ = cmp.Diff(version, version)
 	return fmt.Sprintf("schallweg %s", version)
 }
