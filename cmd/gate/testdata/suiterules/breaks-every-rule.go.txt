@@ -1,0 +1,50 @@
+// This fixture is source that is read, never built. It exists to break every
+// rule the suite reader enforces, once each where once is enough and three times
+// where the rule has three shapes worth separating.
+//
+// It carries the .txt suffix so the toolchain does not build it and so that a
+// reader who opens it is not confused about why the repository contains a test
+// that does all of this.
+package example
+
+import (
+	"math/rand"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+)
+
+func TestEverythingThatIsRefused(t *testing.T) {
+	got := compute()
+
+	// The bare equality the tolerance rule exists for.
+	if got == 61.3 {
+		t.Error("equal")
+	}
+	// The same defect with the literal on the other side.
+	if 0.5 != got {
+		t.Error("not equal")
+	}
+	// A signed literal is still a literal.
+	if got == -0.25 {
+		t.Error("equal")
+	}
+
+	// A test whose result depends on when it ran.
+	started := time.Now()
+	_ = started
+
+	// A fixture generated at run time is a fixture nobody can look at.
+	_ = rand.Int()
+
+	// The network, reached directly.
+	_, _ = http.Get("https://example.invalid/")
+
+	// Changing the working directory, and three paths that leave the package.
+	_ = os.Chdir("..")
+	relative, _ := os.ReadFile("../testdata/spectrum.csv")
+	_ = relative
+	absolute, _ := os.ReadFile("/etc/hosts")
+	_ = absolute
+}
