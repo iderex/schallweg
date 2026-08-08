@@ -1,0 +1,445 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/iderex/schallweg/data/schema/component-record.schema.json",
+  "title": "A schallweg component record",
+  "description": "One record of the component database: a construction, a lining or a covering. The format, the granularity and the versioning rule are docs/decisions/data-format.md. The fields and what each is for are docs/decisions/element-model.md, which this schema derives from and which says that where the two disagree this schema is what runs. The provenance floor is docs/decisions/certificate-extraction.md. An element and a junction are deliberately not record types here: docs/decisions/element-model.md places an element inside a project rather than in the database, and docs/decisions/junctions.md keys a junction on the identities of elements in a project, so neither can be written down without a project around it.",
+  "$comment": "Every numeric quantity carries a \"unit\" annotation naming its SI unit, so a reader of this schema gets the unit from the schema rather than from the spelling of a field name. It is an annotation: a validator ignores it, and it is here because a unit that lives only in a field name cannot be read by anything.",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "required": ["schema", "id", "kind", "provenance"],
+  "properties": {
+    "schema": {
+      "description": "The major version of this schema. A record declaring a version this reader does not know is refused rather than read for the fields it recognises, because a major version exists to say those fields may no longer mean what the reader thinks. The rule is docs/decisions/data-format.md.",
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/identifier",
+      "description": "Stable identity, which survives being cited by a result. What makes an identity stable is issue #56."
+    },
+    "kind": {
+      "description": "What this record is. It decides which calculations the record may enter and it is not free text.",
+      "enum": ["wall", "floor", "roof", "window", "door", "lining", "covering"]
+    },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "superseded": {
+      "description": "Values this record used to carry. Append-only, and never a substitute for correcting the current value. The rule and the reason are docs/decisions/data-format.md; the route that makes an entry is issue #78.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/superseded" }
+    },
+    "basis": {
+      "description": "Whether this construction carries laboratory values or a description. Never inferred from whether the values happen to be present, because an absent spectrum and a description are different statements.",
+      "enum": ["measured", "described"]
+    },
+    "mass_per_area": {
+      "unit": "kg/m2",
+      "description": "Mass per unit area. Required on every construction, lining and covering: the in situ correction and the junction estimation route both need it and neither can proceed without it.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 5000
+    },
+    "thickness": {
+      "unit": "m",
+      "description": "Total thickness. Derived from the layers where layers are given and stated directly where they are not.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 5
+    },
+    "layers": {
+      "description": "The makeup, outermost first. A measured construction whose makeup was not published carries an empty list, and that emptiness is recorded rather than filled with a guess.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/layer" }
+    },
+    "airborne_lab": {
+      "description": "The laboratory sound reduction index, band by band. This is what the detailed model runs on.",
+      "$ref": "#/$defs/spectrum",
+      "properties": { "quantity": { "const": "R" } }
+    },
+    "impact_lab": {
+      "description": "The laboratory normalised impact sound pressure level, band by band. This is what the detailed impact model runs on.",
+      "$ref": "#/$defs/spectrum",
+      "properties": { "quantity": { "const": "Ln" } }
+    },
+    "improvement": {
+      "description": "The improvement this lining or covering gives, band by band. A lining carries the airborne improvement and a covering the impact improvement; neither may carry the other's, which is why the quantity is in the value and is constrained by kind below.",
+      "$ref": "#/$defs/spectrum"
+    },
+    "airborne_single": {
+      "description": "The weighted sound reduction index and its adaptation terms. This is what the simplified model runs on, and it is not derived from the spectrum by this record nor the spectrum from it: docs/decisions/model-shape.md says the two models each read their own input and neither invents the other's.",
+      "$ref": "#/$defs/airborne_rating"
+    },
+    "impact_single": {
+      "description": "The weighted normalised impact sound pressure level and its adaptation term, for the simplified impact model.",
+      "$ref": "#/$defs/impact_rating"
+    },
+    "specimen_area": {
+      "unit": "m2",
+      "description": "Area of the tested specimen. Per record rather than a constant, because a window's specimen is much smaller than a wall's.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100
+    },
+    "specimen_edge_length": {
+      "unit": "m",
+      "description": "The edge length that the in situ correction is referenced to, as tested.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100
+    },
+    "lab_loss_factor": {
+      "unit": "1",
+      "description": "Total loss factor of the specimen as tested. The in situ correction is a correction from this value to the building's, so a laboratory value without it can only be used uncorrected, which is an assumption the result then has to carry.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "base_construction": {
+      "$ref": "#/$defs/identifier",
+      "description": "The construction this improvement was measured on, by identity. Not optional and not a provenance nicety: an improvement measured on a heavy base and applied to a lightweight one is a known way to be several decibels wrong, and nothing downstream can warn about it unless the base is in the record."
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "A construction. Everything except a lining and a covering.",
+      "if": {
+        "properties": { "kind": { "enum": ["wall", "floor", "roof", "window", "door"] } },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["basis", "mass_per_area", "thickness"],
+        "properties": {
+          "improvement": false,
+          "base_construction": false
+        }
+      }
+    },
+    {
+      "$comment": "A measured construction carries at least one measured quantity. Which quantities a construction of a given kind needs depends on the calculation it enters, and that is the kernel's refusal to make rather than this schema's: a window with no impact spectrum is complete for its kind, not a record with a field missing.",
+      "if": {
+        "properties": {
+          "kind": { "enum": ["wall", "floor", "roof", "window", "door"] },
+          "basis": { "const": "measured" }
+        },
+        "required": ["kind", "basis"]
+      },
+      "then": {
+        "anyOf": [
+          { "required": ["airborne_lab"] },
+          { "required": ["impact_lab"] },
+          { "required": ["airborne_single"] },
+          { "required": ["impact_single"] }
+        ]
+      }
+    },
+    {
+      "$comment": "A described construction carries the makeup and no laboratory values. The first release computes from measured constructions only, and a described one that carried values would be that restriction quietly undone.",
+      "if": {
+        "properties": {
+          "kind": { "enum": ["wall", "floor", "roof", "window", "door"] },
+          "basis": { "const": "described" }
+        },
+        "required": ["kind", "basis"]
+      },
+      "then": {
+        "required": ["layers"],
+        "properties": {
+          "airborne_lab": false,
+          "impact_lab": false,
+          "airborne_single": false,
+          "impact_single": false,
+          "specimen_area": false,
+          "specimen_edge_length": false,
+          "lab_loss_factor": false
+        }
+      }
+    },
+    {
+      "$comment": "A lining improves airborne sound reduction. A covering improves impact sound transmission. They enter the calculation at different points, and a record that could carry either quantity would let one be applied where the other belongs.",
+      "if": {
+        "properties": { "kind": { "const": "lining" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["improvement", "base_construction", "layers", "mass_per_area"],
+        "properties": {
+          "improvement": { "properties": { "quantity": { "const": "DR" } } },
+          "basis": false,
+          "airborne_lab": false,
+          "impact_lab": false,
+          "airborne_single": false,
+          "impact_single": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "kind": { "const": "covering" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["improvement", "base_construction", "layers", "mass_per_area"],
+        "properties": {
+          "improvement": { "properties": { "quantity": { "const": "DLn" } } },
+          "basis": false,
+          "airborne_lab": false,
+          "impact_lab": false,
+          "airborne_single": false,
+          "impact_single": false
+        }
+      }
+    },
+    {
+      "$comment": "A laboratory spectrum without the specimen it was measured on cannot be corrected to a building, and a record carrying one without the others is the case that produces an uncorrected number nobody notices.",
+      "dependentRequired": {
+        "airborne_lab": ["specimen_area", "specimen_edge_length", "lab_loss_factor"],
+        "impact_lab": ["specimen_area", "specimen_edge_length", "lab_loss_factor"]
+      }
+    },
+    {
+      "$comment": "A measured record's provenance has to reach the certificate floor. A described one has no certificate, so it reaches the smaller floor of who wrote it down and where the description came from.",
+      "if": {
+        "anyOf": [
+          { "properties": { "basis": { "const": "measured" } }, "required": ["basis"] },
+          { "properties": { "kind": { "enum": ["lining", "covering"] } }, "required": ["kind"] }
+        ]
+      },
+      "then": {
+        "properties": {
+          "provenance": {
+            "required": [
+              "laboratory",
+              "report_number",
+              "report_date",
+              "test_standard",
+              "client",
+              "product_designation",
+              "obtained_from",
+              "entered_by",
+              "entered_on"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "provenance": {
+            "required": ["described_from", "entered_by", "entered_on"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "description": "An identity used to cite a record from another record or from a result. Lower case, digits and hyphens, so that two spellings of one identity cannot both exist.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+    },
+    "date": {
+      "description": "A calendar date, as year, month and day. No time and no zone: nothing here happens at an hour.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "provenance": {
+      "description": "Where this record's values came from. The floor is docs/decisions/certificate-extraction.md, and every field below is there because a record without it either cannot be checked or is not lawfully extractable. Which of these are required depends on whether the record is measured or described, above. What provenance is as a data model, beyond this floor, is issue #74.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "laboratory": {
+          "description": "The laboratory that performed the test, by name. A measured value has no meaning apart from who measured it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "report_number": {
+          "description": "The report or certificate number. It is the only way anybody can go and read the original.",
+          "type": "string",
+          "minLength": 1
+        },
+        "report_date": { "$ref": "#/$defs/date" },
+        "test_standard": {
+          "description": "The standard the test was performed to, with its part and edition. The same symbol means different things under different editions, and a value compared across editions without knowing it is a silent error.",
+          "type": "string",
+          "minLength": 1
+        },
+        "client": {
+          "description": "The client the test was performed for, usually the manufacturer.",
+          "type": "string",
+          "minLength": 1
+        },
+        "product_designation": {
+          "description": "The product as the manufacturer names it. A user who cannot map the record onto something they can buy cannot use it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "obtained_from": {
+          "description": "Where the certificate was obtained, as a citation to the published location. It is the difference between a record extracted from a published document and a record whose origin nobody can state.",
+          "type": "string",
+          "minLength": 1
+        },
+        "described_from": {
+          "description": "For a described construction, where the description came from. It is the same question the certificate citation answers and it has a different answer.",
+          "type": "string",
+          "minLength": 1
+        },
+        "entered_by": {
+          "description": "Who entered the record. Entry from a document is the step where a mistake is invisible: the number is plausible, nothing refuses it, and the only route back is to the person who read the page.",
+          "type": "string",
+          "minLength": 1
+        },
+        "entered_on": { "$ref": "#/$defs/date" }
+      }
+    },
+    "superseded": {
+      "description": "One value this record used to carry, with why it stopped being current. A later test is a different fact rather than a correction of the first, and the two forms below are kept apart because collapsing them would make an entry error look like a physical change.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "reason", "current_until", "provenance"],
+      "properties": {
+        "field": {
+          "description": "Which field this entry holds the previous value of.",
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "description": "remeasured means a new test exists and the old one was correct for its own test. corrected means the earlier value was entered wrongly from its report.",
+          "enum": ["remeasured", "corrected"]
+        },
+        "what_was_wrong": {
+          "description": "For a corrected entry, what was wrong. Required on a correction, because a correction that does not say what it corrects cannot be checked.",
+          "type": "string",
+          "minLength": 1
+        },
+        "current_until": { "$ref": "#/$defs/date" },
+        "provenance": { "$ref": "#/$defs/provenance", "required": ["entered_by", "entered_on"] },
+        "spectrum": { "$ref": "#/$defs/spectrum" },
+        "number": { "type": "number" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "reason": { "const": "corrected" } },
+            "required": ["reason"]
+          },
+          "then": { "required": ["what_was_wrong"] }
+        }
+      ]
+    },
+    "layer": {
+      "description": "One part of a construction's makeup. A layer has no acoustic values of its own and is never looked up on its own; it exists so a construction's description is structured rather than a sentence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["material", "thickness", "attachment"],
+      "properties": {
+        "material": {
+          "description": "A name from a controlled vocabulary rather than free text, so two records of the same thing are the same thing. The vocabulary itself is not fixed by this schema and is owed by the work that enters the first records.",
+          "type": "string",
+          "minLength": 1
+        },
+        "thickness": {
+          "unit": "m",
+          "description": "Thickness of this layer.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 5
+        },
+        "density": {
+          "unit": "kg/m3",
+          "description": "Density. A solid is naturally described this way.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 12000
+        },
+        "mass_per_area": {
+          "unit": "kg/m2",
+          "description": "Mass per unit area. A sheet is naturally described this way. Forcing one of the two forms would make half the records carry a converted number nobody can check against its source.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 5000
+        },
+        "attachment": {
+          "description": "How this layer is connected to the one below. This is what distinguishes constructions that are identical on a materials list and tens of decibels apart in practice.",
+          "enum": ["bonded", "mechanically fixed", "resiliently fixed", "free"]
+        }
+      },
+      "anyOf": [
+        { "required": ["density"] },
+        { "required": ["mass_per_area"] }
+      ]
+    },
+    "spectrum": {
+      "description": "One value in every band of a declared band set. There is no route to write a spectrum with a band missing: the band set decides exactly which keys must be present and no others are allowed, which is docs/decisions/frequency-bands.md made a property of the file rather than a convention. The quantity is in the value because a sound reduction index and an impact level are both decibels over the same bands, and a reader that takes one for the other produces a plausible wrong answer. docs/formats/spectrum.md defines R and Ln for the exchange format; the two improvement quantities are record quantities and a record is not an exchange document.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["band_set", "quantity", "unit", "values"],
+      "properties": {
+        "band_set": { "enum": ["core", "extended"] },
+        "quantity": {
+          "description": "R is the sound reduction index, Ln the normalised impact sound pressure level, DR the airborne improvement of a lining, DLn the impact improvement of a covering.",
+          "enum": ["R", "Ln", "DR", "DLn"]
+        },
+        "unit": { "const": "dB" },
+        "values": {
+          "description": "The values, keyed by nominal centre frequency in hertz as a string. Nominal rather than exact, because two roundings of one exact frequency would appear as two bands.",
+          "type": "object",
+          "additionalProperties": { "type": "number", "unit": "dB", "minimum": -100, "maximum": 200 }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "band_set": { "const": "core" } },
+            "required": ["band_set"]
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "required": ["100", "125", "160", "200", "250", "315", "400", "500", "630", "800", "1000", "1250", "1600", "2000", "2500", "3150"],
+                "propertyNames": {
+                  "enum": ["100", "125", "160", "200", "250", "315", "400", "500", "630", "800", "1000", "1250", "1600", "2000", "2500", "3150"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "band_set": { "const": "extended" } },
+            "required": ["band_set"]
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "required": ["50", "63", "80", "100", "125", "160", "200", "250", "315", "400", "500", "630", "800", "1000", "1250", "1600", "2000", "2500", "3150", "4000", "5000"],
+                "propertyNames": {
+                  "enum": ["50", "63", "80", "100", "125", "160", "200", "250", "315", "400", "500", "630", "800", "1000", "1250", "1600", "2000", "2500", "3150", "4000", "5000"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "airborne_rating": {
+      "description": "The weighted sound reduction index with its adaptation terms, as a certificate prints them. The terms are carried beside the rating and never folded into it, because a user who adds them themselves needs to see both.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Rw", "unit"],
+      "properties": {
+        "Rw": { "type": "integer", "unit": "dB", "minimum": -20, "maximum": 120 },
+        "C": { "type": "integer", "unit": "dB", "minimum": -30, "maximum": 30 },
+        "Ctr": { "type": "integer", "unit": "dB", "minimum": -30, "maximum": 30 },
+        "unit": { "const": "dB" }
+      }
+    },
+    "impact_rating": {
+      "description": "The weighted normalised impact sound pressure level with its adaptation term.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Lnw", "unit"],
+      "properties": {
+        "Lnw": { "type": "integer", "unit": "dB", "minimum": -20, "maximum": 120 },
+        "CI": { "type": "integer", "unit": "dB", "minimum": -30, "maximum": 30 },
+        "unit": { "const": "dB" }
+      }
+    }
+  }
+}

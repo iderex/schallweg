@@ -44,11 +44,16 @@ somebody else's database.
 
 ## What is here today
 
-No records. The machine-readable schema is issue #73, what provenance has to
-carry is issue #74, the first record entered by hand is issue #75, and the set
-the database starts with is issue #81.
+No records. What is here is this README and the machine-readable schema, in
+`schema/component-record.schema.json`.
 
     git ls-files 'data/**' | wc -l
-    1
+    2
 
-That one file is this README.
+Nothing in this repository validates anything against that schema yet. It is a
+document that says what a record must carry and no route reads it, so a record
+added today would be checked by whoever reviewed it and by nothing else. The
+check that closes that is issue #38.
+
+What provenance has to carry as a data model is issue #74, the first record
+entered by hand is issue #75, and the set the database starts with is issue #81.
