@@ -20,7 +20,16 @@
 # reads. Put a fixture here when its carriage returns, its encoding or its
 # missing final newline are the thing under test.
 #
+# The pattern begins with `**/` so that it reaches a package's own testdata
+# directory and not only the one at the root. A fixture is a committed file under
+# the package's own testdata directory, so the package-level case is the ordinary
+# one, and a pattern anchored at the root silently normalised it: git recorded LF
+# for a file whose carriage returns were the point, and the text rules check
+# passed, because a file that is not marked `-text` and holds no CRLF in the index
+# breaks neither of its legs. The check that caught it is the fixture's own test
+# asserting that the bytes it read still carry a carriage return.
+#
 # The cost is stated rather than hidden: a `-text` file shows in a diff as a
 # binary blob, so a reviewer cannot read the change. Use this directory for
 # fixtures whose bytes matter and for nothing else.
-testdata/byte-exact/** -text
+**/testdata/byte-exact/** -text

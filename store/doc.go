@@ -15,6 +15,7 @@
 // operator rather than shipped, which is docs/decisions/standard-text.md, and
 // the refusal when one is absent is written here rather than in the kernel.
 //
-// The package is empty today. Issue #47 adds the spectrum exchange format,
-// issue #73 the record schema, and issue #91 the project file.
+// What is here today is the spectrum exchange format, specified in
+// docs/formats/spectrum.md and read and written here. Issue #73 adds the record
+// schema and issue #91 the project file.
 package store
