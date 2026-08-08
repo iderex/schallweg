@@ -29,7 +29,6 @@ package acoustic
 import (
 	"errors"
 	"fmt"
-	"math"
 )
 
 // The refusals this file makes.
@@ -188,10 +187,14 @@ func (o OctaveSpectrum) String() string {
 // index, a level difference or an improvement does not combine by energy sum,
 // because the octave-band value of a ratio depends on how energy is distributed
 // across the octave and that is exactly what a third-octave spectrum of ratios
-// does not say. This function cannot refuse such an input. The decibel quantity
-// types that would let it are issue #40, and until they exist the name of this
-// function is the whole of the protection, which is a weaker thing than a
-// refusal and is written here rather than left to be discovered.
+// does not say. This function cannot refuse such an input, and the decibel
+// quantity types in level.go do not change that: they separate a Level from a
+// Delta once a value is in one of them, and a Spectrum holds neither, so a
+// spectrum of indices reaches this function looking exactly like a spectrum of
+// levels. The name is still the whole of the protection, which is a weaker thing
+// than a refusal and is written here rather than left to be discovered. What
+// would make it one is a spectrum that carries its quantity, which no issue
+// holds today.
 //
 // It refuses a spectrum whose band set does not carry all three third-octave
 // bands of every octave. The core set is such a set, so a core spectrum cannot
@@ -210,15 +213,27 @@ func EnergySumToOctave(s Spectrum) (OctaveSpectrum, error) {
 	out := make([]float64, 0, octaveCount)
 	for n := 0; n < octaveCount; n++ {
 		c := octaveCentre(n)
-		var energy float64
+		thirds := make([]Level, 0, 3)
 		for _, p := range [3]int{c - 1, c, c + 1} {
 			if p < lo || p >= hi {
 				return OctaveSpectrum{}, fmt.Errorf("%w: the %d Hz octave needs %d Hz and the %s does not have it",
 					ErrOctaveNotWhole, nominalSeries[c], nominalSeries[p], s.set)
 			}
-			energy += math.Pow(10, s.values[p-lo]/10)
+			l, err := NewLevel(s.values[p-lo])
+			if err != nil {
+				return OctaveSpectrum{}, fmt.Errorf("the %d Hz octave: %w", nominalSeries[c], err)
+			}
+			thirds = append(thirds, l)
 		}
-		out = append(out, 10*math.Log10(energy))
+		total, err := EnergySum(thirds...)
+		if err != nil {
+			return OctaveSpectrum{}, fmt.Errorf("the %d Hz octave: %w", nominalSeries[c], err)
+		}
+		db, err := total.Decibels()
+		if err != nil {
+			return OctaveSpectrum{}, fmt.Errorf("the %d Hz octave: %w", nominalSeries[c], err)
+		}
+		out = append(out, db)
 	}
 	return OctaveSpectrum{values: out}, nil
 }
