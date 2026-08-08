@@ -56,14 +56,23 @@ something the project already accepted.
 
 ## What the tree does about it
 
-Four things, on every pull request, on every push to the default branch, and
-again every week.
+Four legs run on every pull request, on every push to the default branch, and
+again every week. A fifth thing is written here as well, because it is a
+question none of the four asks.
 
 **The graph is exactly what the tree declares.** The build runs with the module
 in read-only mode, so a build that would have to change `go.mod` or `go.sum`
-fails instead of updating them. `go mod verify` then checks that every module in
-the module cache still hashes to what the lock records, which is the check that
-notices a tampered or substituted module rather than a changed declaration.
+fails instead of updating them. Fetching a module in the same step compares it
+against the hash `go.sum` records and stops with a checksum mismatch, so an
+edited lock file and a substituted module both fail here rather than building.
+
+**The module cache is what was put in it.** `go mod verify` compares the cache
+against what was downloaded into it. Stated exactly, because the draft of this
+document said this was the leg that refuses an edited lock file and the
+measurement on issue #27 showed it passing on a tree the build refused: what it
+catches is a cache altered after the download, which on a run that restores no
+cache is close to nothing. It is kept for the day a cache is restored to save
+time.
 
 **The declaration is exactly what the source needs.** `go mod tidy` is run and
 the tree is refused if it changed anything. That catches the two drifts in
@@ -84,8 +93,8 @@ in this repository will have changed.
 here reads the licence of any dependency, because the licence of this repository
 is an open maintainer decision on issue #1 and there is nothing yet to judge
 compatibility against. Until that entry is answered the question above is
-recorded in the pull request and answered by nobody, which is a weaker position
-than the other three and is stated here rather than left to be discovered.
+recorded in the pull request and answered by nobody, which is weaker than the
+four legs above and is stated here rather than left to be discovered.
 
 Beside those, the dependency review on a pull request reads what a change adds
 against the advisory database, and fails on any known vulnerability at any
@@ -105,15 +114,23 @@ There is no `go.sum` in this tree:
 That is what an empty graph produces, and it is worth being exact about what it
 does and does not mean. It means there is nothing to lock, so the property "the
 build resolved the versions the tree declares" is held by the graph being empty
-rather than by a file. It does not mean the mechanism is absent: read-only mode,
-`go mod verify` and the tidy check are all in force today and all of them would
-fail on the first dependency that arrived without its hashes. What is true is
-that none of them has anything to refuse yet, and a green run today is therefore
-weaker evidence than the same green run will be after the first dependency.
+rather than by a file. It does not mean the mechanism is absent: read-only mode
+and the tidy check are in force today and both would fail on the first dependency
+that arrived without its hashes. What is true is that neither has anything to
+refuse yet, and a green run today is therefore weaker evidence than the same
+green run will be after the first dependency.
 
-That the tampering refusal is real rather than assumed was measured on a branch
-that added one dependency and then altered its recorded hash. What that run
-showed is on issue #27.
+So the refusal was measured somewhere it had something to refuse. A branch adds
+one dependency, the run is green, one character of the recorded hash is then
+changed and nothing else, and the build stops:
+
+    go build -o "$out/" ./...
+    verifying github.com/google/go-cmp@v0.7.0: checksum mismatch
+    SECURITY ERROR
+
+The branch, the two commits and the full output are on issue #27, including the
+leg that passed on that same tree and therefore is not the one doing the
+refusing.
 
 ## Pinning what runs, not only what is imported
 

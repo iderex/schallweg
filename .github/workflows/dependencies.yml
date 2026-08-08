@@ -13,12 +13,17 @@
 #   Read-only resolution. `-mod=readonly` refuses a build that would have to edit
 #   `go.mod` or `go.sum` to succeed. Without it a missing requirement is repaired
 #   silently by the build and the repair is only visible to whoever notices the
-#   file changed afterwards, which on a runner is nobody.
+#   file changed afterwards, which on a runner is nobody. This is also the leg
+#   that refuses an edited lock file: fetching a module compares it against the
+#   hash `go.sum` records and stops with a checksum mismatch, measured on the
+#   branch named in issue #27.
 #
-#   Hash verification. `go mod verify` recomputes the hash of every module in the
-#   cache and compares it against what the lock records. Read-only resolution
-#   cannot see this: a substituted module with the declared version number
-#   resolves exactly as the tree asks and is a different piece of code.
+#   Hash verification. `go mod verify` compares the module cache against what was
+#   downloaded into it, so what it catches is a cache altered after the fact
+#   rather than a lock file that was edited. On a run with no restored cache
+#   there is little for it to find, and it is kept because the day the cache is
+#   restored to save time is the day it has something to say. It is not the
+#   checksum guard, and the measurement above is what corrected that.
 #
 #   Tidiness. `go mod tidy` followed by a refusal of any change catches drift in
 #   both directions, which is why it is not the same check as the first leg: a
