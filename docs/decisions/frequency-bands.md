@@ -28,6 +28,46 @@ the reverse is not a conversion at all: it is an invention with a plausible shap
 The kernel refuses it. Which conversions exist and what is refused is issue #41,
 and this document is the reason it has something to refuse.
 
+## What each direction loses
+
+Answered by issue #41 and written here because the section above delegated it.
+
+Third-octave to octave loses the shape of the spectrum inside each octave, and it
+loses it completely. Two third-octave spectra that differ by six decibels band by
+band inside one octave reach the same octave value when they carry the same
+energy, which `TestTwoDifferentSpectraReachTheSameOctaves` in `acoustic` shows
+with two such spectra rather than asserting. That is the whole of the loss and it
+is deliberate: an octave value is a statement about an octave, and everything
+finer than an octave is what the caller gave up by asking for one.
+
+The refusal that came with it is stricter than the sentence above implies, and
+the reason is worth having in writing. The conversion refuses a band set that
+does not carry all three third-octave bands of every octave, which the core set
+does not: it holds 3150 Hz without the rest of the 4000 Hz octave, and none of
+the 63 Hz octave. So a core spectrum has no octave form at all. Producing the
+five octaves it does cover whole would silently drop 3150 Hz, and an octave
+spectrum standing for less energy than its input is exactly the number this
+document's next section refuses to let a missing band produce. Extended data is
+what an octave form needs, and asking for it is a question about the source
+rather than a rounding somebody can absorb.
+
+Octave to third-octave loses nothing, because it does not exist. There is no
+function to call, which is the strongest refusal available and the one that
+reports at compile time rather than at run time. Anything that produced three
+numbers from one would have chosen a shape for the spectrum inside the band, and
+that invented shape would then travel through the calculation beside values that
+were measured. It is the same invention this document refuses when it refuses to
+extrapolate a missing band, and it is refused for the same reason.
+
+There is one thing the conversion cannot refuse and it is stated here rather than
+left in the source. A `Spectrum` holds numbers and does not know what quantity
+they are, and an energy sum is right for a level and wrong for a ratio: the
+octave value of a sound reduction index depends on how energy is distributed
+across the octave, which a third-octave spectrum of indices does not say. The
+function is named `EnergySumToOctave` so that a caller reaching for it on the
+wrong quantity has been told, and a name is not a refusal. The decibel quantity
+types that would turn it into one are issue #40.
+
 ## Range, and the extended bands
 
 There is one band set definition in the tree, and a spectrum is always on a
@@ -164,7 +204,8 @@ where it is wrong is undetectable afterwards.
 
 Every kernel issue that touches a spectrum is written against the container
 described here rather than against a slice of numbers. The type itself is issue
-#39, the conversions are issue #41, and the exchange format is issue #47.
+#39, the conversions are `acoustic/octave.go`, and the exchange format is issue
+#47.
 
 Where a later issue names this document, a reader sees the constraint before the
 work starts. Where it does not, the constraint applies anyway, because the type
