@@ -1,0 +1,137 @@
+# The ordinary test suite.
+#
+# The testability rule is in docs/decisions/testability.md: every test in the
+# ordinary suite runs with no display, no elevation, no network and no hardware
+# beyond a general purpose computer. This job is where that rule stops being a
+# sentence.
+#
+# How each of the four conditions is held here, and the difference between held
+# and asserted is deliberate:
+#
+#   No display. The runner has none. Nothing in this job starts one and no
+#   virtual framebuffer is installed, so a test that needs a display fails here.
+#
+#   No elevation. The suite runs as the ordinary runner user. The only elevated
+#   command in the job is the firewall rule below, which is set before the suite
+#   and removed after it, and the suite itself never runs under it.
+#
+#   No network. Denied rather than assumed: an OUTPUT rule rejects every packet
+#   from the user the suite runs as, except to loopback. Module downloads are
+#   also refused independently by GOPROXY=off, so a missing dependency fails as
+#   a missing dependency rather than as a timeout. One thing the rule does not
+#   deny, stated rather than glossed: a name lookup through the local resolver
+#   on loopback still answers, because the resolver forwards as another user. So
+#   a test that resolves a name gets an answer and is then refused when it tries
+#   to connect, which is the step that matters.
+#
+#   No special hardware. Nothing in the job installs a driver or asks for a
+#   device.
+#
+# The job also fails when the suite ran zero tests. That is the failure mode that
+# looks exactly like success: a broken test discovery turns the whole gate into
+# decoration and every run stays green.
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to default to the job id, so renaming the job id cannot silently change the
+    # name a required-check list matches. Issue #36 collects the names to require.
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Compile the suite while the network is still up
+        # Compiling first means the run below fails for a test's own reason
+        # rather than because the compiler could not reach something. Nothing is
+        # downloaded here either: the module graph is empty and GOPROXY is off.
+        env:
+          GOPROXY: "off"
+        run: go test -run '^$' ./... > /dev/null
+
+      - name: Deny outbound network for the suite
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          # Reject rather than drop, so a test that tries to reach the network
+          # fails immediately and legibly instead of hanging until the timeout.
+          sudo iptables -I OUTPUT 1 -m owner --uid-owner "$uid" ! -o lo -j REJECT
+          sudo ip6tables -I OUTPUT 1 -m owner --uid-owner "$uid" ! -o lo -j REJECT
+          echo "Outbound network denied for uid $uid, loopback still allowed."
+
+      - name: Run the ordinary suite
+        env:
+          GOPROXY: "off"
+        run: |
+          set -euo pipefail
+          # -count=1 defeats the test result cache, so this run is a run and not
+          # a replay of an older verdict.
+          go test ./... -count=1 -v 2>&1 | tee suite.log
+
+      - name: Allow outbound network again
+        # Runs even when the suite failed, so the rule never outlives the step it
+        # was set for.
+        if: always()
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          sudo iptables -D OUTPUT -m owner --uid-owner "$uid" ! -o lo -j REJECT || true
+          sudo ip6tables -D OUTPUT -m owner --uid-owner "$uid" ! -o lo -j REJECT || true
+
+      - name: Refuse a run that collected no tests
+        run: |
+          set -euo pipefail
+          ran="$(grep -c '^=== RUN' suite.log || true)"
+          echo "Tests started: $ran"
+          if [ "$ran" -eq 0 ]; then
+            echo "::error::The suite ran zero tests. A gate that runs nothing is not a gate."
+            exit 1
+          fi
+
+      - name: Say what was not run
+        # A run that covered less than everything must not read like one that
+        # covered everything and found nothing. The harnesses named here are the
+        # ones docs/decisions/testability.md defines; none of them exists in the
+        # tree yet, and this step says so rather than leaving the reader to
+        # assume either way.
+        run: |
+          set -euo pipefail
+          echo "This job ran the ordinary suite only."
+          echo
+          echo "Harnesses NOT run by this job, and what each would need:"
+          echo "  requires-display          a display or a substitute for one"
+          echo "  requires-instrument       a measurement instrument and its driver"
+          echo "  requires-third-party-tool another program, commercially licensed"
+          echo "  requires-network          outbound network access"
+          echo "  requires-elevation        an administrative account"
+          echo
+          echo "None of those harnesses exists in the tree today, so nothing was"
+          echo "skipped. When one exists, it is still not run here, and this list"
+          echo "is what says so."
