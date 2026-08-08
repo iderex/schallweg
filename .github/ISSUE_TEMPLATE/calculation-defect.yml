@@ -1,0 +1,52 @@
+name: Calculation defect
+description: A number is wrong, or an input was refused that should have been accepted.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong number without its inputs cannot be reproduced, so the input set
+        is required in full rather than in part. If that is too long to paste,
+        attach the project file.
+  - type: textarea
+    id: inputs
+    attributes:
+      label: The full input set
+      description: >
+        Every element with its construction and dimensions, every junction with
+        its type and coupling length, the rooms, and every value you supplied.
+        Attach the project file if you have one. A partial set is not enough.
+      placeholder: Paste the project file, or every input, here.
+    validations:
+      required: true
+  - type: textarea
+    id: invocation
+    attributes:
+      label: What you ran
+      description: The exact command, including every option.
+    validations:
+      required: true
+  - type: textarea
+    id: got
+    attributes:
+      label: What it produced
+      description: The output in full, including any refusal message.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and where that expectation comes from
+      description: >
+        A hand calculation, another tool, a published case, or a measurement.
+        Say which. An expectation with no source is still worth reporting; say
+        that instead of leaving it blank.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of the program's version line, and the database version if one was used.
+    validations:
+      required: true

@@ -1,0 +1,46 @@
+name: Data correction
+description: A value in the component database does not match the certificate it came from, or a newer test exists.
+labels: ["data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every value here traces to a published test certificate. A correction
+        without one cannot be checked, so the certificate is required.
+  - type: input
+    id: record
+    attributes:
+      label: The record
+      description: Its identifier, or the path of its file.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: The field, the value it holds, and the value it should hold
+      description: One line per field. Give the unit.
+    validations:
+      required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: Which kind of correction is this
+      description: >
+        These are not the same thing and they are recorded differently. An entry
+        error means the record was read wrongly from its report. A newer test
+        means the old value was correct for its own test.
+      options:
+        - The record was entered wrongly from its report
+        - A newer test exists and supersedes the old one
+    validations:
+      required: true
+  - type: textarea
+    id: certificate
+    attributes:
+      label: The certificate the corrected value comes from
+      description: >
+        The laboratory, the report or certificate number, its date, the standard
+        and edition it was tested to, and where the document is published so
+        somebody else can read it. Do not attach the document itself.
+    validations:
+      required: true
