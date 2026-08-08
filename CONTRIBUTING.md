@@ -46,6 +46,33 @@ Where a claim cannot be backed by a command, write it as a claim and say so.
 "Verified", "not measured" and "not evaluated on this route" are different words
 for different things and they are not interchangeable.
 
+## How a test compares a number
+
+Through `acoustic/approx`, with a tolerance you chose and wrote down:
+
+```go
+approx.Equal(t, "R_w", got, want, 0.05)
+```
+
+The tolerance is a required argument and a tolerance of zero is refused. A test
+that asserts a computed value equals a literal passes on the machine it was
+written on and then fails when a summation order, an architecture or a compiler
+moves the last bit, and the repair under pressure is a tolerance somebody invents
+on the spot and does not write down. Choosing it in advance, in the units of the
+quantity, is the difference between a test that states how much agreement it
+wants and one that discovers it.
+
+`go test ./...` refuses a floating point equality anywhere in a test file, along
+with reading the clock, importing a network or randomness package, changing the
+working directory, and a fixture path that leaves the package. What each rule
+catches, and the several things none of them can see, is written where the reader
+is rather than here.
+
+A fixture is a committed file under the package's own `testdata` directory. One
+generated at run time is a fixture nobody can look at, and a test that fails on
+one seed in a thousand fails for somebody else, once, and cannot be reproduced
+from what they report.
+
 ## Sign off every commit
 
 Every commit needs a `Signed-off-by` line matching its author. It is how you

@@ -1,0 +1,45 @@
+// This fixture does every one of the things the neighbouring fixture does, done
+// the way the rules allow, and it must produce no finding at all.
+//
+// It is the near miss rather than an obviously clean file. Each line below is
+// one character or one import away from a line in breaks-every-rule.go.txt: an
+// integer comparison rather than a floating point one, a package that parses an
+// address rather than one that opens a connection, a fixture path that stays
+// inside the package. A reader that fired on any of these would be a reader
+// nobody could keep switched on.
+package example
+
+import (
+	"net/url"
+	"os"
+	"testing"
+
+	"github.com/iderex/schallweg/acoustic/approx"
+)
+
+func TestTheSameThingsDoneLegally(t *testing.T) {
+	got := compute()
+
+	// The comparison the rule wants instead, with the tolerance stated.
+	approx.Equal(t, "R_w", got, 61.3, 0.05)
+
+	// An integer comparison. One character from a floating point literal and
+	// entirely legitimate.
+	if bands := count(); bands != 16 {
+		t.Errorf("got %d bands, want 16", bands)
+	}
+
+	// A committed fixture, read from this package's own testdata directory.
+	data, err := os.ReadFile("testdata/spectrum.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = data
+
+	// Parsing an address is not reaching one.
+	u, err := url.Parse("https://example.invalid/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = u
+}
