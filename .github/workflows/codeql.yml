@@ -1,0 +1,210 @@
+# The code scanning gate.
+#
+# Until now nothing in this repository looked at the source. The workflows were
+# audited, the supply chain was audited, the tree was checked for formatting and
+# for line endings, and the one thing nobody read by machine was the code itself.
+#
+# What this catches that review does not. Review reads a diff, and the defects
+# this analyser is for are not in a diff: a value that reaches a file path from
+# somewhere untrusted, a value that reaches a command, an error that is checked
+# in one branch and not the other. Those are properties of a path through the
+# program, and a reader holding one screen of a change cannot follow one.
+#
+# What it covers here, stated so nobody reads the green tick as more than it is.
+# The interesting classes for this project are narrow: the parsers that will read
+# project files and component records written by somebody else, the arithmetic
+# that can divide by zero or overflow, and the handling of large data files. It
+# is a desk tool with no network listener, so the classes this analyser is best
+# known for, injection into a database and cross-site scripting in a web
+# response, do not exist here and a clean result says nothing about the physics.
+# What no analyser can see is stated in the same breath: a wrong reference curve,
+# a band index off by one, a formula from the wrong edition of a standard. Those
+# are the defects this project has to fear most, and they are the validation
+# corpus's problem rather than this gate's.
+#
+# The gate fails on any finding rather than filing it for later. A finding that
+# is deliberately accepted is written into the source as a suppression that names
+# the analyser, the rule and the reason, and the second job below refuses one
+# that names less than that.
+#
+# It also runs weekly. A rule set that improves finds things in code nobody
+# touched, and nothing else in this repository would notice.
+name: Code scanning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+  schedule:
+    # Weekly, at a time no other workflow here uses, so a scheduled run is
+    # legible in the run list on its own.
+    - cron: "41 6 * * 3"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-scanning:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to default to the job id, so renaming the job id cannot silently change the
+    # name a required-check list matches. Issue #36 collects the names to require.
+    name: code-scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Upload the findings into the code-scanning tab, where an alert has a
+      # history and a state rather than only a line in a build log.
+      security-events: write
+    env:
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The same toolchain the build check uses, from the one place the
+          # version is written.
+          go-version-file: go.mod
+          cache: false
+
+      - name: Initialise the analyser
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          languages: go
+          # security-extended is the default security suite plus the queries with
+          # a lower precision, which is the right trade where a gate fails on
+          # every finding: a false positive here costs a suppression that says
+          # why, and that is cheap. The security-and-quality suite is deliberately
+          # not used, because the quality half is maintainability and style, those
+          # are opinions rather than defects, and a gate that fails on an opinion
+          # is a gate somebody switches off.
+          queries: security-extended
+
+      - name: Build for the analyser
+        uses: github/codeql-action/autobuild@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          category: codeql-go
+          # Write the result where the gate step below can read it, and upload it
+          # in the separate step after that rather than from here, so a failure to
+          # upload and a finding are two different failures.
+          output: sarif-results
+          upload: never
+
+      - name: Upload the findings where they can be triaged
+        # Only where the token can write security events: a push to the default
+        # branch and a pull request from this repository. A fork pull request runs
+        # with a read-only token, so the upload is skipped there and the gate step
+        # below still runs and still blocks. continue-on-error keeps the gate
+        # independent of the upload: a transient upload failure must not skip the
+        # step that fails on a finding.
+        if: (github.event_name != 'pull_request') || (github.event.pull_request.head.repo.full_name == github.repository)
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: sarif-results
+          category: codeql-go
+
+      - name: Fail on a finding
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(sarif-results/*.sarif)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::The analyser produced no SARIF file. Failing closed rather than reading an absent result as a clean one."
+            exit 1
+          fi
+          total=0
+          for f in "${files[@]}"; do
+            n="$(jq '[.runs[].results[]?] | length' "$f")"
+            echo "$f: $n finding(s)"
+            total=$((total + n))
+          done
+          if [ "$total" -ne 0 ]; then
+            echo "::error::The analyser reported ${total} finding(s). Fix them, or accept one deliberately with a suppression naming the analyser, the rule and the reason."
+            for f in "${files[@]}"; do
+              jq -r '.runs[].results[]? | "  \(.ruleId): \(.message.text) at \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' "$f"
+            done
+            exit 1
+          fi
+          echo "The analyser reported nothing."
+
+      - name: Say what this job did not cover
+        run: |
+          set -euo pipefail
+          echo "This job read the Go source with one analyser and nothing else."
+          echo
+          echo "Not covered here:"
+          echo "  the arithmetic     no analyser knows a reference curve is the"
+          echo "                     wrong one, or that a band index is off by"
+          echo "                     one. That is the validation corpus."
+          echo "  the workflows      audited by their own job, not by this one."
+          echo "  the dependencies   scanned by their own job, not by this one."
+          echo "  a second lens      one analyser is one opinion. A second one is"
+          echo "                     issue #101."
+
+  suppressions:
+    # The other half of the gate. A finding may be accepted deliberately, and the
+    # thing that makes that honest is that the acceptance says which analyser,
+    # which rule, and why. This job refuses one that says less.
+    name: code-scanning-suppressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Refuse a suppression that names no analyser or gives no reason
+        run: |
+          set -euo pipefail
+          # The markers every analyser in reach of this repository reads, and the
+          # one accepted shape. `codeql[rule]: reason` and `lgtm[rule]: reason`
+          # name an analyser, a rule and a reason. A bare `nolint` and a `#nosec`
+          # name neither a rule nor a reason and there is no spelling of them that
+          # does, so they are refused rather than given a form.
+          markers='(codeql\[|lgtm\[|nolint|#nosec)'
+          accepted='(codeql|lgtm)\[[A-Za-z0-9/._-]+\]:[[:space:]]+[^[:space:]]'
+
+          # This file is excluded from its own scan, because it has to contain the
+          # markers to look for them and would otherwise refuse itself. The
+          # residual is exact and is not softened: a suppression written inside
+          # this workflow file is not seen by this check.
+          rc=0
+          hits="$(git grep -nP "$markers" -- . ':!.github/workflows/codeql.yml')" || rc=$?
+          case "$rc" in
+            1)
+              echo "No suppression marker anywhere in the tracked tree."
+              exit 0
+              ;;
+            0) ;;
+            *)
+              echo "::error::The suppression scan exited $rc, which is neither a match nor a clean tree. Failing closed."
+              exit 1
+              ;;
+          esac
+
+          bad="$(printf '%s\n' "$hits" | grep -vP "$accepted" || true)"
+          if [ -n "$bad" ]; then
+            echo "::error::A suppression has to name the analyser, the rule and the reason, as in: codeql[go/path-injection]: the path is a fixture under testdata, not operator input."
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+
+          echo "Every suppression in the tree names its analyser, its rule and its reason:"
+          printf '%s\n' "$hits"
