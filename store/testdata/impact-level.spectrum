@@ -1,0 +1,20 @@
+schallweg-spectrum 1
+quantity Ln
+unit dB
+band-set core
+band 100 33.4
+band 125 36.1
+band 160 39.8
+band 200 43.2
+band 250 46.0
+band 315 48.7
+band 400 51.3
+band 500 53.9
+band 630 55.1
+band 800 57.4
+band 1000 59.0
+band 1250 60.2
+band 1600 61.5
+band 2000 62.8
+band 2500 63.1
+band 3150 64.4

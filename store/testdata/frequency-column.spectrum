@@ -1,0 +1,20 @@
+schallweg-spectrum 1
+quantity R
+unit dB
+band-set core
+band 100 100
+band 125 125
+band 160 160
+band 200 200
+band 250 250
+band 315 315
+band 400 400
+band 500 500
+band 630 630
+band 800 800
+band 1000 1000
+band 1250 1250
+band 1600 1600
+band 2000 2000
+band 2500 2500
+band 3150 3150
