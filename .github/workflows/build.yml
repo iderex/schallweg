@@ -15,6 +15,15 @@
 # file the build left behind, because `go build ./...` run from the root drops
 # the executable into the current directory, and an artefact sitting in a working
 # tree is how one gets committed.
+#
+# The job also writes the bill of materials for both things this repository
+# ships, and uploads each beside what it describes. It is produced here rather
+# than at release time so that a change to what is inside the program is visible
+# in the review of the change that caused it, and it is read out of the binary
+# this job built rather than out of the source, because those can differ and the
+# question a user asks is about the artefact they were given. Why the format is
+# what it is, and what the document does not say, is in
+# docs/decisions/bill-of-materials.md.
 name: Build
 
 on:
@@ -63,7 +72,8 @@ jobs:
       - name: Build every package
         run: |
           set -euo pipefail
-          out="$(mktemp -d)"
+          out="$RUNNER_TEMP/build"
+          mkdir -p "$out"
           go build -o "$out/" ./...
           echo "Built into $out:"
           ls -1 "$out"
@@ -78,3 +88,94 @@ jobs:
             exit 1
           fi
           echo "The working tree is unchanged by the build."
+
+      # The bill of materials is produced here rather than beside the build,
+      # because a document reconstructed afterwards describes what somebody
+      # believed was linked. This one is read out of the binary this job just
+      # made.
+      #
+      # The timestamp is the commit's own and the namespace carries the commit
+      # sha, so the same commit produces the same document twice and a document
+      # that differs means the artefact differs.
+      - name: Bill of materials for the program
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/build"
+          created="$(git log -1 --format=%cI)"
+          go run ./cmd/sbom \
+            -subject program \
+            -binary "$out/schallweg" \
+            -created "$created" \
+            -namespace "https://github.com/${GITHUB_REPOSITORY}/spdx/program/${GITHUB_SHA}" \
+            -out "$out/schallweg.spdx.json"
+          echo "Wrote $out/schallweg.spdx.json"
+
+      # Separately from the program, because the two are released separately and
+      # a user may take only one. What the document travels with today is
+      # nothing: the database artefact itself is not built by this route yet, so
+      # the document is uploaded alone rather than pretending to accompany
+      # something.
+      - name: Bill of materials for the database
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/build"
+          created="$(git log -1 --format=%cI)"
+          go run ./cmd/sbom \
+            -subject database \
+            -root data \
+            -created "$created" \
+            -namespace "https://github.com/${GITHUB_REPOSITORY}/spdx/database/${GITHUB_SHA}" \
+            -out "$RUNNER_TEMP/database.spdx.json"
+          echo "Wrote $RUNNER_TEMP/database.spdx.json"
+
+      # Two things are refused here, and the second one is the point.
+      #
+      # The declared format version, because a document that quietly changed
+      # format is one that every reader downstream reads wrongly.
+      #
+      # And a module the binary records that the document does not name. That
+      # compares the command's reader against the toolchain's own printer, which
+      # is a different route to the same fact. Stated exactly: with an empty
+      # module graph this leg compares an empty list and passes without having
+      # refused anything, so a green run here today is weaker evidence than the
+      # same run on a tree with a dependency in it.
+      - name: Refuse a document that does not describe what was built
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/build"
+          doc="$out/schallweg.spdx.json"
+
+          version="$(jq -r '.spdxVersion' "$doc")"
+          if [ "$version" != "SPDX-2.3" ]; then
+            echo "::error::The program document declares $version, and this repository writes SPDX-2.3."
+            exit 1
+          fi
+
+          missing=0
+          while read -r module; do
+            [ -n "$module" ] || continue
+            if ! jq -e --arg m "$module" '.packages[] | select(.name == $m)' "$doc" > /dev/null; then
+              echo "::error::The binary records module $module and the document does not name it."
+              missing=1
+            fi
+          done <<< "$(go version -m "$out/schallweg" | awk '$1 == "dep" { print $2 }')"
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "The document declares $version and names every module the binary records:"
+          jq -r '.packages[] | "  \(.name) \(.versionInfo // "")"' "$doc"
+
+      - name: Upload the program and its bill of materials
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: program
+          path: ${{ runner.temp }}/build
+          if-no-files-found: error
+
+      - name: Upload the database bill of materials
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: database-bill-of-materials
+          path: ${{ runner.temp }}/database.spdx.json
+          if-no-files-found: error
