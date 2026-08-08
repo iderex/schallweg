@@ -34,6 +34,17 @@ Nothing in this repository reads any of that. There is no check that refuses an
 issue with no evidence or a pull request body with none, so this section is a
 rule a person applies.
 
+## Who decides, and how people behave here
+
+[GOVERNANCE.md](GOVERNANCE.md) says who decides what, how to argue with a
+decision, and specifically how a disputed component record is settled, which is
+the one governance question this project really has and is not a code review
+question.
+
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) is the adopted code of conduct and says
+how to report something, including the case where the person you would report to
+is the subject of the report.
+
 ## Every asserted fact carries the command that produced it
 
 This matters more here than in most projects, because the subject is numbers. A
