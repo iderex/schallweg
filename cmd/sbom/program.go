@@ -79,7 +79,10 @@ func programDocument(binary, created, namespace string) (*document, error) {
 		RelatedSPDXElement: toolchainID,
 	})
 
-	for i, dep := range info.Deps {
+	// Proof only: the deliberate defect. The document stops naming the modules
+	// the binary records, and the leg on the build has to refuse it.
+	var noDeps []*debug.Module
+	for i, dep := range noDeps {
 		id := fmt.Sprintf("SPDXRef-Module-%d-%s", i+1, safeIDPart(dep.Path))
 		doc.Packages = append(doc.Packages, modulePackage(id, dep))
 		doc.Relationships = append(doc.Relationships, relationship{
