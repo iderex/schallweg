@@ -29,22 +29,26 @@ test can kill them, and a bar would make somebody write one that pretends to.
 
 ## The score
 
-Measured on the commit this file lands on:
+Measured by the job itself, on the runner:
 
-    gremlins unleash --timeout-coefficient=60 --exclude-files='approx/.*' ./acoustic
-    Killed: 115, Lived: 12, Not covered: 2
-    Timed out: 1, Not viable: 0, Skipped: 0
-    Test efficacy: 90.55%
-    Mutator coverage: 98.45%
+    acoustic
+    Killed: 116, Lived: 12, Not covered: 2
+    Timed out: 0, Not viable: 0, Skipped: 0
+    Test efficacy: 90.62%
+    Mutator coverage: 98.46%
 
-    gremlins unleash --timeout-coefficient=60 ./acoustic/approx
+    acoustic/approx
     Killed: 9, Lived: 0, Not covered: 1
+    Timed out: 0, Not viable: 0, Skipped: 0
     Test efficacy: 100.00%
     Mutator coverage: 90.00%
 
-Those runs are on Windows, with gremlins 0.6.0. The scheduled job runs the same
-version on Linux and its numbers are the ones to compare later runs against;
-these are what was available when the triage below was written.
+    gh run view 31304524236 --json status,conclusion --jq '"\(.status) \(.conclusion)"'
+    completed success
+
+Those are the numbers to compare a later run against. The same commands on
+Windows, where the triage below was written, report one mutant fewer killed and
+one timed out, for the reason under the loop entry.
 
 Before the tests this triage produced, the same command over `acoustic` reported
 `Killed: 102, Lived: 20, Not covered: 6`, efficacy 83.61%, coverage 95.31%.
@@ -106,15 +110,23 @@ construct distinguishes the two.
 whose `lo` is zero, for the reason just above. With `lo` zero, `p-lo`, `p+lo` and
 the negation of either are the same index.
 
-### Equivalent: a loop that stops terminating
+### Killed by running out of memory: a loop that stops terminating
 
-`acoustic/band.go:92`, increment to decrement, one mutant, reported as timed out.
+`acoustic/band.go:92` and `acoustic/octave.go:89`, increment to decrement, two
+mutants, both killed on the runner.
 
-The line is `for i := lo; i < hi; i++`. Counting down from `lo` never reaches
-`hi`, so the mutant does not produce a wrong answer, it produces no answer. The
-tool reports that as its own status because it cannot tell a program that will
-never finish from one that is merely slower than the timeout it was given. A
-suite that hangs is a suite that fails, and this is not a survivor.
+The lines are `for i := lo; i < hi; i++` and its octave counterpart. Counting
+down never reaches the bound, so neither mutant produces a wrong answer: each
+appends to a slice for as long as it is allowed to run. The tool's timeout is
+derived from how long the unmutated suite takes, and on a runner the memory is
+gone first. The first dispatched run of this job was cancelled by exactly that,
+with everything it had measured lost, which is issue #167.
+
+What stops them is the address space ceiling the measuring step sets before it
+starts. The test binary dies out of memory, its test fails, and the mutant is
+killed, which is the verdict it deserved. On a Windows machine, with no such
+ceiling and a slower allocation, the same two are reported as timed out instead,
+and a timed-out mutant is inconclusive rather than a pass.
 
 ### Not reachable by the tool: a constant declaration carries no coverage counter
 
