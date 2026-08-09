@@ -1,0 +1,14 @@
+The fixture the path rule and the address rule are proven against. Every line is
+prose so that no other route reads it as configuration.
+
+The finding the path rule has to report, and it is the shape a terminal paste
+leaves behind: /home/nils/schallweg/data/floor/report.json
+
+The neighbours it has to stay silent on, one token away each. An absolute path
+that is generic rather than somebody's: /usr/bin/env. A path relative to the
+repository, which is the repair: data/floor/report.json.
+
+The finding the address rule has to report: http://www.datakustik.com/products/
+
+The neighbour it has to stay silent on, one character away:
+https://www.datakustik.com/products/

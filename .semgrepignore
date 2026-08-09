@@ -1,0 +1,15 @@
+# This file is empty of patterns on purpose, and it has to exist to be empty.
+#
+# The pattern analyser ships a default ignore list, and that list skips every
+# file whose name ends in _test.go. In most projects that is a kindness. Here it
+# would remove the files the rules most want to read: a fixture path pasted out
+# of somebody's terminal lands in a test and nowhere else, and a test file is
+# tracked source like any other.
+#
+# A file present and empty replaces the default list. There is no flag that
+# turns the default off, so this is the route, and the analyser reads this name
+# rather than its own for compatibility with the tool it was forked from.
+#
+# What is excluded from the tree scan is one directory, named on the command
+# line in .github/workflows/pattern-scanning.yml so that a reader sees it beside
+# the run rather than here.

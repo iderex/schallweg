@@ -1,0 +1,82 @@
+# The rules the second analyser runs, and the whole of what it claims.
+#
+# The first analyser reads Go and follows a value through the program. It never
+# opens a JSON schema, a data record, a workflow file or a Markdown document,
+# because none of those is a program it can build a path through. That is the
+# gap these rules are for: they are patterns over text, they run over every
+# tracked file, and they say nothing at all about control flow.
+#
+# Each rule states what it refuses and what it does not reach. A rule whose
+# residual is not written down reads, later, as a rule that had none.
+
+rules:
+  - id: bounded-schema-number-without-a-unit
+    languages: [json]
+    severity: ERROR
+    paths:
+      include:
+        - "*.schema.json"
+    message: >-
+      This schema property constrains a magnitude and does not say what the
+      magnitude is in. A bound is a claim about a physical quantity, and a bound
+      without a unit is a number somebody has to guess the meaning of: 5000
+      refuses a wall of lead only if it is kilograms per square metre. Add the
+      "unit" annotation beside the bound. The schema's own $comment already says
+      every numeric quantity carries one, and until this rule nothing read that
+      sentence.
+    # What this does not reach: a numeric property carrying no bound at all. Its
+    # unit is owed too, and this rule is silent about it, because a schema
+    # carries value slots whose unit is a property of the field they stand in
+    # for rather than of the slot. Where the subject is a bound, the unit is
+    # decidable from the schema alone, and that is where this rule stops.
+    patterns:
+      - pattern-either:
+          - pattern: '{..., "type": "number", ...}'
+          - pattern: '{..., "type": "integer", ...}'
+      - pattern-either:
+          - pattern: '{..., "minimum": ..., ...}'
+          - pattern: '{..., "maximum": ..., ...}'
+          - pattern: '{..., "exclusiveMinimum": ..., ...}'
+          - pattern: '{..., "exclusiveMaximum": ..., ...}'
+      - pattern-not: '{..., "unit": "...", ...}'
+
+  - id: a-path-from-one-persons-machine
+    languages: [generic]
+    severity: ERROR
+    paths:
+      exclude:
+        - ".github/opengrep/rules/"
+    message: >-
+      This is an absolute path out of somebody's own machine. It works for one
+      person, it names that person in a public tree, and in a fixture or a
+      workflow it turns a run on any other machine into a failure whose message
+      is about a missing file rather than about the mistake. Write a path
+      relative to the repository, or take the location from the environment the
+      run is already in.
+    # What this does not reach: a path that is absolute and generic,
+    # /usr/bin/env among them, which is correct where it appears. The subject is
+    # a home directory or a Windows drive, which is the shape that carries an
+    # account name.
+    pattern-either:
+      - pattern: /home/$USER/
+      - pattern: /Users/$USER/
+      - pattern-regex: '[A-Za-z]:\\\\Users\\\\'
+      - pattern-regex: '[A-Za-z]:/Users/'
+
+  - id: a-plaintext-http-address
+    languages: [generic]
+    severity: ERROR
+    paths:
+      exclude:
+        - ".github/opengrep/rules/"
+    message: >-
+      This address is fetched in the clear. Every source this project cites is a
+      thing a reader is expected to go and check, and one cited over http is one
+      whose content the reader cannot tell from something a network handed them
+      instead. Cite the https address, or, where the source genuinely has none,
+      say so beside it rather than leaving the reader to notice the scheme.
+    # What this does not reach: an https address that redirects to a plaintext
+    # one, or an XML namespace that happens to be written as an http URL and is
+    # an identifier rather than a fetch. Neither is in this tree today and both
+    # would need a rule that knows which of the two it is looking at.
+    pattern-regex: 'http://[a-zA-Z0-9]'

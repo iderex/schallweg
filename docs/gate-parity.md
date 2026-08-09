@@ -47,6 +47,8 @@ scope. It is a setting nobody has changed yet.
     dependencies.yml
     dependency-review.yml
     format-and-vet.yml
+    pattern-scanning.yml
+    pr-hygiene.yml
     scorecard.yml
     test.yml
     text-rules.yml
@@ -60,7 +62,11 @@ scope. It is a setting nobody has changed yet.
     code-scanning-suppressions
     DCO sign-off
     dependencies
+    Deterministic PR-hygiene checks
     format-and-vet
+    pattern-scanning
+    pattern-scanning-proof
+    PR-hygiene rules bite
     Reject Trojan Source Unicode
     Scorecard analysis
     test
@@ -96,7 +102,7 @@ The reference runs these on their own schedules without gating a merge.
 | Reference element | Here | Reasoning | Delivered by |
 | --- | --- | --- | --- |
 | `Scorecard supply-chain security` | Adopted | Already running. | inherited scaffolding |
-| `Repo Invariant Lint (Opengrep)` | Adapted | A second analyser with a different engine, because one analyser's blind spot is not a property anybody can enumerate in advance. Which analyser is not decided here. | #101 |
+| `Repo Invariant Lint (Opengrep)` | Adopted | A second analyser with a different engine, because one analyser's blind spot is not a property anybody can enumerate in advance. The same engine, pinned by version and by the checksum of the asset, over rules of this repository's own. It runs on every pull request rather than on a schedule, as `pattern-scanning`, with `pattern-scanning-proof` beside it holding every rule to a fixture it has to find. | #101 |
 | `Stryker mutation testing` | Adapted | The reason is stronger here than there. Most of this codebase is small pure functions over numbers, which is exactly where a surviving mutant means something, and a test that computes a value and asserts it is a number covers the line and proves nothing. | #105 |
 | `Fuzz (SharpFuzz)` | Adapted | The subject is the parsers that take files from strangers, which here is the spectrum exchange format, the record reader and the project file. | #106 |
 | `E2E Login Harness` | Adapted | The reason is that something has to exercise the whole thing the way a user does. There is no login; the equivalent is the worked example that runs from a clean checkout. | #97 |
