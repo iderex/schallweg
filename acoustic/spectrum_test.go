@@ -383,3 +383,56 @@ func TestABandFromNowhereIsNotABand(t *testing.T) {
 		t.Errorf("reading a spectrum with the zero band returned %v, want ErrBandNotInSet", err)
 	}
 }
+
+// TestABandOneStepOutsideItsSetIsNotABand holds the boundary the Band type
+// exists for.
+//
+// A Band carries a position in the whole series and the set it was taken from,
+// and the two sets are different runs of that series. So the interesting wrong
+// band is not the zero value, which TestABandFromNowhereIsNotABand already
+// covers: it is a band one position past the end of its own set, or one before
+// its start, which is a real position of the series and is not a band of that
+// set. Both come from the same off-by-one, and both are constructible from
+// inside this package.
+func TestABandOneStepOutsideItsSetIsNotABand(t *testing.T) {
+	s, err := New(Core, Core.Nominals(), coreValues())
+	if err != nil {
+		t.Fatalf("building a spectrum: %v", err)
+	}
+
+	past := Band{set: Core, series: coreOffset + coreLen}
+	before := Band{set: Core, series: coreOffset - 1}
+
+	for _, b := range []Band{past, before} {
+		if _, err := s.At(b); !errors.Is(err, ErrBandNotInSet) {
+			t.Errorf("reading position %d of the core set returned %v, want ErrBandNotInSet", b.series, err)
+		}
+		if got := b.String(); got != "invalid band" {
+			t.Errorf("position %d of the core set prints as %q, want %q", b.series, got, "invalid band")
+		}
+		if got := b.Nominal(); got != 0 {
+			t.Errorf("position %d of the core set names %d Hz, want nothing", b.series, got)
+		}
+	}
+}
+
+// TestASpectrumSaysWhatItIsAndNoValues covers both branches of Spectrum.String.
+//
+// Nothing read either of them. The branch that matters is the zero value's: an
+// error message about a spectrum nobody built is the one a reader meets when
+// something has already gone wrong, and it must not print as a spectrum on a
+// band set with no bands.
+func TestASpectrumSaysWhatItIsAndNoValues(t *testing.T) {
+	s, err := New(Core, Core.Nominals(), coreValues())
+	if err != nil {
+		t.Fatalf("building a spectrum: %v", err)
+	}
+
+	want := "spectrum on the core third-octave bands 100 Hz to 3150 Hz, 16 bands"
+	if got := s.String(); got != want {
+		t.Errorf("a core spectrum prints as %q, want %q", got, want)
+	}
+	if got := (Spectrum{}).String(); got != "spectrum on no band set" {
+		t.Errorf("the zero spectrum prints as %q", got)
+	}
+}
