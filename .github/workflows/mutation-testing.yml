@@ -95,6 +95,17 @@ jobs:
       - name: Measure each arithmetic package on its own
         run: |
           set -euo pipefail
+          # A mutant that turns a bounded loop into an unbounded one does not
+          # produce a wrong answer, it produces no answer, and the tool's timeout
+          # is not what stops it: the loop appends while it waits, and on the
+          # first run of this job two such mutants took the whole runner down
+          # with them before the timeout could fire. An address space ceiling
+          # per process is what stops it, and it gives the right verdict rather
+          # than merely surviving: the test binary dies out of memory, the test
+          # fails, the mutant is killed. The number is generous enough for the
+          # compiler and the test binary and small enough that the runner, which
+          # has more, is never the thing that runs out.
+          ulimit -v 8388608
           # One run per package, because the tool takes coverage from the
           # package it is pointed at and reports a subpackage's mutants as
           # uncovered when that subpackage's own tests are what cover them. The
