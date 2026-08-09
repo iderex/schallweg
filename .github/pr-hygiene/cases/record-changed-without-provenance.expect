@@ -1,0 +1,4 @@
+exit=1
+fail	record-provenance-fresh	data/floor/a-record.json changed with the provenance block byte-identical; if that is intended, the body needs a line beginning 'Record changed without its provenance: '
+pass	names-an-issue	the body references an issue
+pass	calculation-changed-with-tests	0 calculation file(s) and 0 test file(s) changed
