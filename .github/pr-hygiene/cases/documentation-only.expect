@@ -1,0 +1,4 @@
+exit=0
+pass	record-provenance-fresh	no record changed with its provenance untouched
+pass	names-an-issue	the body references an issue
+pass	calculation-changed-with-tests	0 calculation file(s) and 0 test file(s) changed

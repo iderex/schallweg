@@ -1,0 +1,99 @@
+# The rules that reason about the pull request rather than about the code.
+#
+# Every other check here reads the tree: whether it builds, whether it is
+# formatted, whether an analyser finds something. None of them can see that a
+# laboratory value moved while the provenance block beside it stayed byte for
+# byte the same, because that is not a property of any file. It is a property of
+# the difference between two commits, and it is the worst thing that can happen
+# to this database: a number whose source silently stops being its source.
+#
+# The rules are tiered. Only the near-certain ones fail; the rest annotate. A
+# hygiene check that reds reasonable changes gets ignored, then switched off, and
+# then it protects nothing. Which rule sits where, and why, is argued at each rule
+# in .github/pr-hygiene.sh rather than restated here.
+#
+# The second job is not decoration. The rules live in a script rather than in a
+# `run:` block precisely so that something can run them against pull requests
+# that never existed, and the cases in .github/pr-hygiene/cases are what say the
+# rules refuse what they name. Deleting any one of the three rules reds exactly
+# one case.
+#
+# What this does not have. The issue that asked for this also asked for a rule
+# refusing a change to the validation corpus without a change to the recorded
+# deviations. There is no corpus in this tree yet, and a rule keyed on a path
+# that does not exist is a rule that cannot fire and cannot be tested. Issue #85
+# encodes the first case and issue #111 records the results; the rule belongs
+# with them.
+#
+# Whether this check should be required on the protected branch: yes, for the
+# failing rules and for the same reason as every other check in issue #36's list,
+# and the warning rules do not change that because a warning never reds the job.
+# Nothing here can make it required. That is a repository setting and issue #36
+# is where it is asked for. Until then this reports and a merge can be made past
+# it, which is what docs/gate-parity.md already says about every check here.
+name: PR hygiene
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+concurrency:
+  group: pr-hygiene-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-hygiene:
+    # The literal check-run name, set explicitly so renaming the job id cannot
+    # silently change the name a required-check list matches. It is the name the
+    # reference gate uses for the same element, which docs/gate-parity.md records
+    # as adapted rather than adopted: the shape is theirs and the rules are this
+    # repository's.
+    name: Deterministic PR-hygiene checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read what the pull request contains, and judge it
+        # The number and the body arrive through the environment and are never
+        # interpolated into the script, so nothing a contributor writes in a title
+        # or a body is evaluated as shell.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HYGIENE_ANNOTATE: "1"
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$PR_BODY" >pr-body.txt
+          bash .github/pr-hygiene.sh facts pr-facts.tsv
+          echo "What this pull request is, as the rules see it:"
+          cat pr-facts.tsv
+          echo
+          bash .github/pr-hygiene.sh judge pr-facts.tsv pr-body.txt
+
+  pr-hygiene-selftest:
+    name: PR-hygiene rules bite
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run the rules against the recorded cases
+        run: |
+          set -euo pipefail
+          bash .github/pr-hygiene.sh selftest

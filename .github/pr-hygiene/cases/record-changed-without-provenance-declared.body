@@ -1,0 +1,4 @@
+Closes #103
+
+Record changed without its provenance: a schema migration rewrites every
+record and touches no value and nobody entered anything.
