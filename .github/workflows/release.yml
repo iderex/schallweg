@@ -1,0 +1,213 @@
+# The release route.
+#
+# A release built at somebody's desk is a release nobody can reproduce and
+# nobody can audit. This route runs from a tag, on a clean checkout, through the
+# gate, and produces the whole artefact set in one job with no step a person
+# performs.
+#
+# It publishes nothing. Every run of this workflow is a dry run in the sense the
+# issue that asked for it means, which is that the artefact set is complete and
+# stays inside the run, attached to it, where it can be downloaded and looked at.
+# Signing the set and publishing it is issue #127, and putting the two in one
+# change would mean the first tag that reached this file also went out to the
+# world.
+#
+# What the tag has to be, and what happens when it is not, is decided in
+# cmd/release rather than in a step here. A rule written in a workflow step is a
+# rule nothing can prove bites until somebody pushes a tag and watches it fail,
+# and the rules this route needs are exactly the ones that must not be found that
+# way. The steps below run the compiler, run the gate and call that command.
+#
+# The versioning scheme, what a change in each position promises, and the
+# compatibility rule between the program and the database, are in
+# docs/decisions/versioning.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          The tag to assemble for. A dry run has to name the version the tree it
+          runs on actually builds, because the route refuses a set whose program
+          says it is something else, and a dry run that skipped that rule would
+          be testing a different route from the one a tag uses.
+        required: true
+        default: v0.0.0
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      # The same two as every other job here. Refuse a build that would change
+      # the module graph, and use exactly the toolchain set up below rather than
+      # fetching another one in the middle of a release.
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history, because the step below asks whether the commit
+          # being released is one that already went through the checks that only
+          # run on the default branch.
+          fetch-depth: 0
+
+      # The gate on the server is more than one workflow and none of the others
+      # trigger on a tag. Rather than run a second copy of each of them here,
+      # which would be two implementations of one rule with nothing refusing the
+      # two drifting apart, this asks the question those runs already answered:
+      # is this commit on the default branch. A tag pointing anywhere else names
+      # a commit no review and no server check ever saw.
+      #
+      # The question is asked on every run and only a tag is refused by the
+      # answer. A run started by hand is started from a ref that may be anything,
+      # so refusing there would refuse the ordinary dry run, and printing nothing
+      # would leave a reader of the log unable to tell a run that made the check
+      # from one that did not. It prints which of the two it was.
+      #
+      # A missing remote-tracking ref is a failure rather than a pass. A check
+      # that could not be made and a check that found nothing are different
+      # things and they must not produce the same line.
+      - name: Ask whether this commit is on the default branch
+        run: |
+          set -euo pipefail
+          ref="origin/${DEFAULT_BRANCH}"
+          if ! git rev-parse --verify --quiet "$ref" > /dev/null; then
+            echo "::error::$ref is not in this checkout, so whether $GITHUB_SHA is on $DEFAULT_BRANCH could not be established."
+            exit 1
+          fi
+
+          if git merge-base --is-ancestor "$GITHUB_SHA" "$ref"; then
+            echo "$GITHUB_SHA is on $DEFAULT_BRANCH."
+            exit 0
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            echo "::error::The tag $TAG names $GITHUB_SHA, which is not on $DEFAULT_BRANCH. The checks that run only on the default branch never saw it."
+            exit 1
+          fi
+          echo "$GITHUB_SHA is not on $DEFAULT_BRANCH."
+          echo "This run was started by hand, so that is not refused here. A release from a tag is."
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The minimum version lives in go.mod and nowhere else.
+          go-version-file: go.mod
+          # No build cache, for the same reason the build check has none: this
+          # answers what a clean checkout produces.
+          cache: false
+
+      # The whole local gate, as one command, exactly as a contributor runs it.
+      # A release that skips it is a release nobody ran the suite against.
+      - name: Run the gate
+        run: go run ./cmd/gate
+
+      # One binary per platform the release command names, and the loop reads
+      # that list rather than repeating it. A platform added there is built here
+      # without this file changing.
+      - name: Build every platform
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/release"
+          mkdir -p "$out"
+          version="${TAG#v}"
+
+          while read -r target; do
+            [ -n "$target" ] || continue
+            goos="${target%%/*}"
+            goarch="${target##*/}"
+            name="schallweg_${version}_${goos}_${goarch}"
+            if [ "$goos" = "windows" ]; then
+              name="${name}.exe"
+            fi
+            echo "Building $name"
+            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              go build -o "$out/$name" ./cmd/schallweg
+          done <<< "$(go run ./cmd/release -platforms)"
+
+          ls -1 "$out"
+
+      # One document per artefact rather than one per release, because a user who
+      # was handed a single file cannot use a document that describes a set. Each
+      # is read out of the binary it describes, so a cross-built artefact is
+      # described by what is actually inside it.
+      - name: Bill of materials for every artefact
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/release"
+          created="$(git log -1 --format=%cI)"
+
+          for binary in "$out"/schallweg_*; do
+            case "$binary" in
+              *.spdx.json) continue ;;
+            esac
+            name="$(basename "$binary")"
+            go run ./cmd/sbom \
+              -subject program \
+              -binary "$binary" \
+              -created "$created" \
+              -namespace "https://github.com/${GITHUB_REPOSITORY}/spdx/program/${GITHUB_SHA}/${name}" \
+              -out "$binary.spdx.json"
+            echo "Wrote $name.spdx.json"
+          done
+
+      # The version the set is checked against comes from the artefact rather
+      # than from the source it was built from. Those are the same only when
+      # nothing went wrong, and this is the step that says so. The binary run
+      # here is the one built for this runner.
+      - name: Read the version out of the program that was built
+        id: built
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/release"
+          version="${TAG#v}"
+          binary="$out/schallweg_${version}_linux_amd64"
+          chmod +x "$binary"
+          line="$("$binary")"
+          echo "The program says: $line"
+          echo "line=$line" >> "$GITHUB_OUTPUT"
+
+      # Everything that decides whether this is a release happens here: that the
+      # tag names a version, that the program says it is that version, that the
+      # set holds exactly what the platform list calls for and nothing else, and
+      # what each artefact hashes to.
+      - name: Assemble the artefact set
+        run: |
+          set -euo pipefail
+          go run ./cmd/release \
+            -tag "$TAG" \
+            -version-line "$VERSION_LINE" \
+            -dir "$RUNNER_TEMP/release"
+        env:
+          VERSION_LINE: ${{ steps.built.outputs.line }}
+
+      - name: Upload the artefact set
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ env.TAG }}
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+
+      - name: Say what this route did not do
+        run: |
+          echo "The artefact set for $TAG is attached to this run and nowhere else."
+          echo "Nothing was signed: that is issue #127."
+          echo "Nothing was published: no release was created and no file left this run."
