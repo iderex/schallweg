@@ -6,7 +6,10 @@ Planning happens on the issue tracker first. Every decision that shapes
 the architecture is written down there with its reasons before the code
 that depends on it exists.
 
-See [NOTICE.md](NOTICE.md) for the intended-use notice.
+See [NOTICE.md](NOTICE.md) for the intended-use notice, and
+[docs/what-a-prediction-is-not.md](docs/what-a-prediction-is-not.md) for what a
+computed number here is and is not, which is worth reading before the first
+result is handed to anybody.
 
 ## The standard, and what is not here
 
