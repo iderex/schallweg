@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Not a component record. The fixture the unit rule is proven against.",
+  "type": "object",
+  "properties": {
+    "the_finding": {
+      "description": "A bound with nothing saying what it bounds. This is the one the rule has to report.",
+      "type": "number",
+      "maximum": 5000
+    },
+    "the_neighbour": {
+      "description": "The same property one annotation later. The rule has to stay silent here.",
+      "unit": "kg/m2",
+      "type": "number",
+      "maximum": 5000
+    },
+    "the_residual": {
+      "description": "A value slot with no bound and no unit. The rule does not reach this and says so where it is written.",
+      "type": "number"
+    }
+  }
+}

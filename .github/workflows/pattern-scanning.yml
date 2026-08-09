@@ -1,0 +1,164 @@
+# The second analyser, and it is here for its lens rather than for a second
+# opinion.
+#
+# The first analyser builds the Go program and follows a value through it: which
+# input reaches a file path, which reaches a command, which error is checked on
+# one branch and not the other. That is a question about a path through a
+# program, and it can only be asked about a program. It is also the whole of what
+# that analyser reads. A JSON schema, a component record, a workflow file and a
+# Markdown document are not programs, so nothing in this repository has ever read
+# them for anything except formatting and line endings.
+#
+# This one is a pattern matcher over text. It cannot follow a value anywhere and
+# it does not claim to. What it can do is read every tracked file, including the
+# ones the first analyser never opens, and refuse a shape somebody wrote down: a
+# bound in a schema with no unit beside it, a path out of one person's home
+# directory, an address fetched in the clear. Those are the mistakes that survive
+# review in this repository, because a reviewer reads a diff of a schema for what
+# it says and not for what it forgot to say.
+#
+# Where the two overlap is small and that is the point. One blind spot is not a
+# property anybody can enumerate in advance, which is why the gate this
+# repository is measured against runs two engines rather than one better one.
+#
+# The analyser is a binary fetched from a release, so it is pinned twice: by
+# version, and by the checksum of the file that version resolves to. The fetch
+# fails closed. A tag can be moved and a release asset can be replaced; a
+# checksum is what makes the second one visible, and a run that downloads
+# something else stops before it reads a single file of this repository.
+name: Pattern scanning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The version, and the SHA-256 of the asset that version's release carries for
+  # this runner. Both were read at the commit this workflow lands on:
+  #
+  #   gh api repos/opengrep/opengrep/releases/tags/v1.26.0 \
+  #     --jq '.assets[] | select(.name=="opengrep_manylinux_x86") | .digest'
+  #   sha256:40c21299eeddabf743b856daa843d24f9d4a027130671cd45b3b21776fd9ab26
+  #
+  # and the same file was downloaded and hashed rather than taken from that
+  # field, because the field is the service's claim about the asset and the hash
+  # is the asset:
+  #
+  #   curl -sSL -o opengrep https://github.com/opengrep/opengrep/releases/download/v1.26.0/opengrep_manylinux_x86
+  #   sha256sum opengrep
+  #   40c21299eeddabf743b856daa843d24f9d4a027130671cd45b3b21776fd9ab26  opengrep
+  #
+  # Moving the version means re-running both and replacing both lines. The
+  # release also publishes a signature and a certificate beside the asset, which
+  # this job does not verify: that is a second trust root with its own tooling to
+  # pin, and pinning the bytes is what this job claims and all it claims.
+  ANALYSER_VERSION: "1.26.0"
+  ANALYSER_SHA256: "40c21299eeddabf743b856daa843d24f9d4a027130671cd45b3b21776fd9ab26"
+  ANALYSER_ASSET: "opengrep_manylinux_x86"
+
+jobs:
+  pattern-scanning:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to default to the job id, so renaming the job id cannot silently change the
+    # name a required-check list matches. Issue #36 collects the names to require.
+    name: pattern-scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Fetch the analyser and refuse anything but the pinned bytes
+        run: |
+          set -euo pipefail
+          url="https://github.com/opengrep/opengrep/releases/download/v${ANALYSER_VERSION}/${ANALYSER_ASSET}"
+          # --fail turns an HTTP error into a non-zero exit rather than a file
+          # containing the error page, which would then hash differently and
+          # produce a confusing failure two steps later.
+          curl --fail --silent --show-error --location --output analyser "$url"
+          # The checksum is compared by the tool that computes it rather than by
+          # a shell test, so a truncated hash cannot compare equal to a prefix.
+          echo "${ANALYSER_SHA256}  analyser" > analyser.sha256
+          if ! sha256sum --check --strict analyser.sha256; then
+            echo "::error::The analyser downloaded from ${url} is not the pinned file. Nothing was scanned."
+            exit 1
+          fi
+          chmod +x analyser
+          ./analyser --version
+
+      - name: Refuse a finding anywhere in the tree
+        run: |
+          set -euo pipefail
+          # The near-miss directory is excluded here and scanned by the next
+          # step. It holds files written to be found, so leaving it in would make
+          # every run red for the one reason that is not a defect.
+          if ! ./analyser scan \
+              --config .github/opengrep/rules \
+              --exclude=near-miss \
+              --error \
+              --strict \
+              . ; then
+            echo "::error::The pattern analyser reported a finding. Each rule's message says what to write instead."
+            exit 1
+          fi
+
+  pattern-scanning-proof:
+    # The proof leg, separate from the gate so that a rule which has stopped
+    # biting and a tree which has a finding in it are two different red checks
+    # rather than one.
+    name: pattern-scanning-proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Fetch the analyser and refuse anything but the pinned bytes
+        run: |
+          set -euo pipefail
+          url="https://github.com/opengrep/opengrep/releases/download/v${ANALYSER_VERSION}/${ANALYSER_ASSET}"
+          curl --fail --silent --show-error --location --output analyser "$url"
+          echo "${ANALYSER_SHA256}  analyser" > analyser.sha256
+          if ! sha256sum --check --strict analyser.sha256; then
+            echo "::error::The analyser downloaded from ${url} is not the pinned file. Nothing was scanned."
+            exit 1
+          fi
+          chmod +x analyser
+
+      - name: Every rule reports exactly one finding in the near-miss directory
+        run: |
+          set -euo pipefail
+          # A rule that matches nothing is indistinguishable from a rule that
+          # matches nothing wrong, and the whole tree scan above passes either
+          # way. This is what tells the two apart, and it runs on every pull
+          # request rather than once in the change that added the rule.
+          ./analyser scan \
+            --config .github/opengrep/rules \
+            --strict \
+            --json \
+            .github/opengrep/near-miss > findings.json
+          declared="$(cat .github/opengrep/rules/*.yaml | grep -c '^  - id: ')"
+          echo "Rules declared: ${declared}"
+          jq -r '.results[].check_id' findings.json | sed 's/.*\.//' | sort | uniq -c
+          bitten="$(jq -r '[.results[].check_id] | unique | length' findings.json)"
+          total="$(jq -r '.results | length' findings.json)"
+          if [ "$bitten" -ne "$declared" ] || [ "$total" -ne "$declared" ]; then
+            echo "::error::${declared} rule(s) are declared; the fixtures produced ${total} finding(s) from ${bitten} distinct rule(s). Every rule owes exactly one."
+            exit 1
+          fi
