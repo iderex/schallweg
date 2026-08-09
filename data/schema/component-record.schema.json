@@ -9,8 +9,8 @@
   "required": ["schema", "id", "kind", "provenance"],
   "properties": {
     "schema": {
-      "description": "The major version of this schema. A record declaring a version this reader does not know is refused rather than read for the fields it recognises, because a major version exists to say those fields may no longer mean what the reader thinks. The rule is docs/decisions/data-format.md.",
-      "const": 1
+      "description": "The major version of this schema. A record declaring a version this reader does not know is refused rather than read for the fields it recognises, because a major version exists to say those fields may no longer mean what the reader thinks. The rule is docs/decisions/data-format.md. Version 2 is what entering one published report against version 1 forced: five fields changed type or meaning and one was removed, which is a major change under that rule, and the rule also requires every record in the tree to be migrated so that none is left behind at version 1.",
+      "const": 2
     },
     "id": {
       "$ref": "#/$defs/identifier",
@@ -78,12 +78,17 @@
       "exclusiveMinimum": 0,
       "maximum": 100
     },
-    "specimen_edge_length": {
+    "specimen_edges": {
       "unit": "m",
-      "description": "The edge length that the in situ correction is referenced to, as tested.",
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 100
+      "description": "The edge lengths of the tested specimen, going round its boundary, so that their sum is its perimeter. A test opening of 4.0 m by 5.0 m is four edges and not two. This replaced a single specimen_edge_length, which asked for one number and did not say which one: either dimension of a rectangular opening, the perimeter, and whatever the in situ correction is referenced to are different numbers, and a record carrying one of them without saying which is a record whose reader has to guess. Any of those can be derived from the edges and none of them can be recovered from a single length, so what the report printed is what is stored and the choice of which combination a correction uses stays with the kernel, where the definition it comes from can be cited.",
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "unit": "m",
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 100
+      }
     },
     "lab_loss_factor": {
       "unit": "1",
@@ -91,6 +96,11 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "maximum": 1
+    },
+    "lab_loss_factor_absent": {
+      "description": "Where the loss factor was looked for and not found, for a record whose report does not print one. It is a sentence rather than a flag so that the absence carries the evidence for itself: which sheets and pages were read, and that none of them stated a loss factor. Version 1 made the loss factor a hard dependency of either laboratory spectrum, and the first published report entered against it did not print one anywhere that was read, so the dependency did not protect the data, it removed it: a certificate that publishes a spectrum and no loss factor could not enter the database at all, and the certificates this project can reach are the published ones. The refusal is replaced by a statement that cannot be omitted. A spectrum entered beside this field is a spectrum that can only be used uncorrected, and it is the result's obligation to carry that, which is what the field makes possible rather than what it decides.",
+      "type": "string",
+      "minLength": 1
     },
     "base_construction": {
       "$ref": "#/$defs/identifier",
@@ -147,8 +157,9 @@
           "airborne_single": false,
           "impact_single": false,
           "specimen_area": false,
-          "specimen_edge_length": false,
-          "lab_loss_factor": false
+          "specimen_edges": false,
+          "lab_loss_factor": false,
+          "lab_loss_factor_absent": false
         }
       }
     },
@@ -190,8 +201,23 @@
     {
       "$comment": "A laboratory spectrum without the specimen it was measured on cannot be corrected to a building, and a record carrying one without the others is the case that produces an uncorrected number nobody notices.",
       "dependentRequired": {
-        "airborne_lab": ["specimen_area", "specimen_edge_length", "lab_loss_factor"],
-        "impact_lab": ["specimen_area", "specimen_edge_length", "lab_loss_factor"]
+        "airborne_lab": ["specimen_area", "specimen_edges"],
+        "impact_lab": ["specimen_area", "specimen_edges"]
+      }
+    },
+    {
+      "$comment": "The loss factor is either stated or its absence is. oneOf rather than anyOf, so a record cannot carry both a value and a statement that there is none, which would leave a reader with two answers and no rule for choosing between them.",
+      "if": {
+        "anyOf": [
+          { "required": ["airborne_lab"] },
+          { "required": ["impact_lab"] }
+        ]
+      },
+      "then": {
+        "oneOf": [
+          { "required": ["lab_loss_factor"] },
+          { "required": ["lab_loss_factor_absent"] }
+        ]
       }
     },
     {
@@ -209,9 +235,9 @@
               "laboratory",
               "report_number",
               "report_date",
-              "test_standard",
+              "test_standards",
               "client",
-              "product_designation",
+              "specimen_designation",
               "obtained_from",
               "entered_by",
               "entered_on"
@@ -223,6 +249,52 @@
         "properties": {
           "provenance": {
             "required": ["described_from", "entered_by", "entered_on"]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "A rating that this record carries names the standard it was rated to. The measurement standard and the rating standard are different documents with different editions, and version 1 had one field for both, so a record could state a rating whose procedure nobody can identify.",
+      "if": { "required": ["airborne_single"] },
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": { "test_standards": { "required": ["airborne_rating"] } },
+            "required": ["test_standards"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "required": ["impact_single"] },
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": { "test_standards": { "required": ["impact_rating"] } },
+            "required": ["test_standards"]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "The same obligation for a measured spectrum, against the measurement standard rather than the rating one.",
+      "if": { "required": ["airborne_lab"] },
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": { "test_standards": { "required": ["airborne"] } },
+            "required": ["test_standards"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "required": ["impact_lab"] },
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": { "test_standards": { "required": ["impact"] } },
+            "required": ["test_standards"]
           }
         }
       }
@@ -255,18 +327,22 @@
           "minLength": 1
         },
         "report_date": { "$ref": "#/$defs/date" },
-        "test_standard": {
-          "description": "The standard the test was performed to, with its part and edition. The same symbol means different things under different editions, and a value compared across editions without knowing it is a silent error.",
-          "type": "string",
-          "minLength": 1
+        "test_standards": {
+          "$ref": "#/$defs/test_standards",
+          "description": "The standards this test was performed and rated to, one field per role. Version 1 had a single test_standard string, and the first report entered against it named five standards, which went in as a sentence: it read well and it defeated the reason the field exists, since the same symbol means different things under different editions and nothing can compare an edition it has to find inside prose."
         },
         "client": {
           "description": "The client the test was performed for, usually the manufacturer.",
           "type": "string",
           "minLength": 1
         },
+        "specimen_designation": {
+          "description": "What the report calls the specimen it tested. Every report has one, including a report that tests a construction nobody sells, so this is the field that is always fillable and it is the required one.",
+          "type": "string",
+          "minLength": 1
+        },
         "product_designation": {
-          "description": "The product as the manufacturer names it. A user who cannot map the record onto something they can buy cannot use it.",
+          "description": "The product as the manufacturer names it, where there is one. It is no longer required. The reason it was is still true, that a user who cannot map a record onto something they can buy cannot use it, but requiring it made the first record enter a laboratory's designation of a test specimen into a field that says product, which presents a construction nobody sells as a product somebody can order. The certificates that are published openly are disproportionately the ones commissioned by associations and public bodies, which test generic constructions, so a required product designation fits the certificates behind a login and not the documents this project can reach. A record without this field is a record of a construction rather than of a product, and that is a fact about the certificate rather than a hole in the record.",
           "type": "string",
           "minLength": 1
         },
@@ -286,6 +362,39 @@
           "minLength": 1
         },
         "entered_on": { "$ref": "#/$defs/date" }
+      }
+    },
+    "test_standards": {
+      "description": "One standard per role, each with its part and edition as the report prints it. The roles are the ones a report distinguishes: the airborne measurement, the impact measurement, the facility the measurements were made in, and a rating procedure for each of the two quantities. A report that names fewer of them fills fewer fields, and a role nobody read is absent rather than guessed.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "airborne": {
+          "description": "The standard the airborne measurement was performed to.",
+          "type": "string",
+          "minLength": 1
+        },
+        "impact": {
+          "description": "The standard the impact measurement was performed to.",
+          "type": "string",
+          "minLength": 1
+        },
+        "facility": {
+          "description": "The standard the test facility itself meets.",
+          "type": "string",
+          "minLength": 1
+        },
+        "airborne_rating": {
+          "description": "The standard the weighted sound reduction index and its adaptation terms were computed to.",
+          "type": "string",
+          "minLength": 1
+        },
+        "impact_rating": {
+          "description": "The standard the weighted impact sound pressure level and its adaptation term were computed to.",
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "superseded": {
@@ -366,7 +475,7 @@
       ]
     },
     "spectrum": {
-      "description": "One value in every band of a declared band set. There is no route to write a spectrum with a band missing: the band set decides exactly which keys must be present and no others are allowed, which is docs/decisions/frequency-bands.md made a property of the file rather than a convention. The quantity is in the value because a sound reduction index and an impact level are both decibels over the same bands, and a reader that takes one for the other produces a plausible wrong answer. docs/formats/spectrum.md defines R and Ln for the exchange format; the two improvement quantities are record quantities and a record is not an exchange document.",
+      "description": "One entry in every band of a declared band set. There is no route to write a spectrum with a band missing: the band set decides exactly which keys must be present and no others are allowed, which is docs/decisions/frequency-bands.md made a property of the file rather than a convention. The quantity is in the value because a sound reduction index and an impact level are both decibels over the same bands, and a reader that takes one for the other produces a plausible wrong answer. docs/formats/spectrum.md defines R and Ln for the exchange format; the two improvement quantities are record quantities and a record is not an exchange document. An entry is a measured number or a stated bound, and the two are different shapes so that nothing can read one as the other.",
       "type": "object",
       "additionalProperties": false,
       "required": ["band_set", "quantity", "unit", "values"],
@@ -378,9 +487,9 @@
         },
         "unit": { "const": "dB" },
         "values": {
-          "description": "The values, keyed by nominal centre frequency in hertz as a string. Nominal rather than exact, because two roundings of one exact frequency would appear as two bands.",
+          "description": "The entries, keyed by nominal centre frequency in hertz as a string. Nominal rather than exact, because two roundings of one exact frequency would appear as two bands.",
           "type": "object",
-          "additionalProperties": { "type": "number", "unit": "dB", "minimum": -100, "maximum": 200 }
+          "additionalProperties": { "$ref": "#/$defs/band_entry" }
         }
       },
       "allOf": [
@@ -418,6 +527,82 @@
         }
       ]
     },
+    "band_entry": {
+      "description": "What one band of a spectrum holds: either a number, which is a value that was measured, or a bound, which is a value that was not. A test facility has a limit of its own, and a specimen that out-performs it is reported band by band with a greater-than-or-equal sign against that limit. Version 1 had a plain number per band, so entering such a sheet would have recorded measurements nobody made, invisibly, which is the failure the whole database is arranged against, and the alternative was to enter nothing and lose the certificate. The two shapes are different types rather than a number with a flag beside it, because a reader that has not been written for bounds cannot silently succeed on one: it fails at the point of reading rather than several steps later with a plausible number.",
+      "oneOf": [
+        {
+          "unit": "dB",
+          "description": "A measured value.",
+          "type": "number",
+          "minimum": -100,
+          "maximum": 200
+        },
+        { "$ref": "#/$defs/bounded_band_entry" }
+      ]
+    },
+    "bounded_band_entry": {
+      "description": "A band the test bounds rather than measures. What limited it is required and is a sentence rather than a code, because the thing that limits a measurement is a property of that facility on that day, and a consumer deciding whether the bound is usable needs to read it rather than match it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bound", "value", "unit", "limited_by"],
+      "properties": {
+        "bound": {
+          "description": "at_least for a value the specimen is known to reach or exceed, which is what a facility limit gives for a sound reduction index. at_most for the other direction, which is what a background noise limit gives for a level.",
+          "enum": ["at_least", "at_most"]
+        },
+        "value": {
+          "unit": "dB",
+          "description": "The bound itself, as the report prints it.",
+          "type": "number",
+          "minimum": -100,
+          "maximum": 200
+        },
+        "unit": { "const": "dB" },
+        "limited_by": {
+          "description": "What limited the measurement, as the report states it: the facility's own limit for this test area, the background noise, or whatever else the sheet gives as the reason.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "adaptation_terms": {
+      "description": "One adaptation term per band range, keyed by the range it covers, written as the lowest and highest nominal centre frequency in hertz with a hyphen between them. Version 1 held one term with no field saying which range it was for, and the first report entered against it printed four pairs. The key unstated is for the pair a certificate prints on its rating line without naming its range, which is a statement about that document and not about the standard: a reader resolves it from the rating standard the provenance names, and this schema does not resolve it for them, because that would be this repository asserting the content of a standard it does not hold. This is why the ranges are a pattern rather than a list: a list here would be the standard's own table transcribed into a file that cannot cite it.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "anyOf": [
+          { "const": "unstated" },
+          { "pattern": "^[1-9][0-9]{1,3}-[1-9][0-9]{1,3}$" }
+        ]
+      },
+      "additionalProperties": {
+        "unit": "dB",
+        "type": "integer",
+        "minimum": -30,
+        "maximum": 30
+      }
+    },
+    "uncertainty": {
+      "description": "The uncertainty the laboratory states for this rated value, as the report prints it, with the document the figure comes from. It is recorded rather than computed here: it is a fact the certificate asserts, and this project has no route to derive one. It is on the record because a record that asserts a rating with no sign that the laboratory brackets it wider than the margin a user designs to is a record that reads as more precise than its source. What a result prints of it is issue #82 and issue #96, and is a separate question from whether the record can hold it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "source"],
+      "properties": {
+        "value": {
+          "unit": "dB",
+          "description": "The half-width the report states, so a value of 1.2 means the report brackets the rating by plus or minus 1.2 dB.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 20
+        },
+        "unit": { "const": "dB" },
+        "source": {
+          "description": "The document the figure comes from, as the report names it.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "airborne_rating": {
       "description": "The weighted sound reduction index with its adaptation terms, as a certificate prints them. The terms are carried beside the rating and never folded into it, because a user who adds them themselves needs to see both.",
       "type": "object",
@@ -425,8 +610,9 @@
       "required": ["Rw", "unit"],
       "properties": {
         "Rw": { "type": "integer", "unit": "dB", "minimum": -20, "maximum": 120 },
-        "C": { "type": "integer", "unit": "dB", "minimum": -30, "maximum": 30 },
-        "Ctr": { "type": "integer", "unit": "dB", "minimum": -30, "maximum": 30 },
+        "C": { "$ref": "#/$defs/adaptation_terms" },
+        "Ctr": { "$ref": "#/$defs/adaptation_terms" },
+        "uncertainty": { "$ref": "#/$defs/uncertainty" },
         "unit": { "const": "dB" }
       }
     },
@@ -437,7 +623,8 @@
       "required": ["Lnw", "unit"],
       "properties": {
         "Lnw": { "type": "integer", "unit": "dB", "minimum": -20, "maximum": 120 },
-        "CI": { "type": "integer", "unit": "dB", "minimum": -30, "maximum": 30 },
+        "CI": { "$ref": "#/$defs/adaptation_terms" },
+        "uncertainty": { "$ref": "#/$defs/uncertainty" },
         "unit": { "const": "dB" }
       }
     }
