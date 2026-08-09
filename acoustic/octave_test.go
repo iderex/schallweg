@@ -268,3 +268,37 @@ func TestAZeroOctaveBandCannotReadASpectrum(t *testing.T) {
 		t.Error("a zero octave band names third-octave bands")
 	}
 }
+
+// TestAnOctaveSpectrumNamesEveryOctaveAndSaysWhatItIs holds the two things an
+// octave result carries besides its values: the bands it is on, and what it
+// prints as.
+//
+// Bands is the one that matters. Every test that reads an octave result walks
+// it, and a zero octave spectrum names no bands, so an operation returning one
+// would run those loops zero times and pass. Printing is here because nothing
+// read String at all, and its zero-value branch decides which of two sentences
+// a reader of an error gets.
+func TestAnOctaveSpectrumNamesEveryOctaveAndSaysWhatItIs(t *testing.T) {
+	octaves, err := EnergySumToOctave(flatExtended(t, 40))
+	if err != nil {
+		t.Fatalf("converting to octaves: %v", err)
+	}
+
+	if got := len(octaves.Bands()); got != octaves.Len() {
+		t.Errorf("the octave spectrum holds %d value(s) and names %d band(s)", octaves.Len(), got)
+	}
+	if got := len(octaves.Bands()); got != len(OctaveBands()) {
+		t.Errorf("the octave spectrum names %d band(s), want the %d the grid has", got, len(OctaveBands()))
+	}
+
+	want := "spectrum on the 7 octave bands 63 Hz to 4000 Hz"
+	if got := octaves.String(); got != want {
+		t.Errorf("the octave spectrum prints as %q, want %q", got, want)
+	}
+	if got := (OctaveSpectrum{}).String(); got != "octave spectrum on no bands" {
+		t.Errorf("the zero octave spectrum prints as %q", got)
+	}
+	if (OctaveSpectrum{}).Bands() != nil {
+		t.Error("the zero octave spectrum names octave bands")
+	}
+}

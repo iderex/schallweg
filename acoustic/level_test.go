@@ -594,3 +594,43 @@ func TestTheUnconstructedSpectrumIsRefusedEverywhere(t *testing.T) {
 		t.Errorf("SpectrumOfLevels with no levels gave %v", err)
 	}
 }
+
+// TestEverySpectrumOperationReturnsAWholeSpectrum requires each operation that
+// returns a spectrum to return one on the argument's band set, with a value in
+// every band of it.
+//
+// Every other test here reads its result by walking got.Bands(), and the zero
+// Spectrum is on no band set and has no bands. An operation that returned an
+// empty spectrum and no error would therefore run those loops zero times,
+// assert nothing at all, and pass. That is not hypothetical: negating the error
+// check inside Weighted, inside Corrected and inside EnergySumSpectra leaves
+// every test in this package green, which is how this one came to be written.
+func TestEverySpectrumOperationReturnsAWholeSpectrum(t *testing.T) {
+	s := coreSpectrum(t, 50)
+	other := coreSpectrum(t, 1)
+
+	cases := []struct {
+		name string
+		run  func() (Spectrum, error)
+	}{
+		{"Weighted", func() (Spectrum, error) { return Weighted(s, 12.0/10.0) }},
+		{"Corrected", func() (Spectrum, error) { return Corrected(s, other) }},
+		{"EnergySumSpectra", func() (Spectrum, error) { return EnergySumSpectra(s, other) }},
+	}
+
+	for _, c := range cases {
+		got, err := c.run()
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if got.Set() != s.Set() {
+			t.Errorf("%s returned a spectrum on the %s, want the %s", c.name, got.Set(), s.Set())
+		}
+		if got.Len() != s.Len() {
+			t.Errorf("%s returned %d band(s), want %d", c.name, got.Len(), s.Len())
+		}
+		if len(got.Bands()) != s.Len() {
+			t.Errorf("%s returned a spectrum naming %d band(s), want %d", c.name, len(got.Bands()), s.Len())
+		}
+	}
+}

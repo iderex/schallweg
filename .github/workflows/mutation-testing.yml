@@ -1,0 +1,147 @@
+# Mutation testing over the arithmetic, and it reports rather than gates.
+#
+# Coverage says a line ran. It does not say that changing the line would fail a
+# test, and for arithmetic that is the whole question: a test that computes a
+# value and asserts it is a number covers every line it touches and proves
+# nothing. This runs the suite once per altered program and asks which
+# alterations nobody noticed.
+#
+# It reports and does not gate, for a reason that is not about cost. A mutation
+# score is a measurement, and a measurement turned into a gate teaches a team to
+# write tests that kill mutants instead of tests that check behaviour. Several
+# of the surviving mutants in this repository are equivalent by construction and
+# no test can kill them; a bar would make somebody write one that pretends to.
+# What the survivors owe instead is an argument, and that argument lives in
+# .github/mutation-testing/README.md.
+#
+# It runs on a schedule and by hand rather than on a pull request, because it
+# runs the whole suite once per mutant and there are more than a hundred.
+#
+# The subject is the arithmetic packages and nothing else. The command line, the
+# data reader and the gate are not here: a mutant in a file reader is a question
+# about a parser, and the parsers get fuzzing instead, which is issue #106.
+name: Mutation testing
+
+on:
+  schedule:
+    # Weekly, at a time no other workflow here uses, so a scheduled run is
+    # legible in the run list on its own.
+    - cron: "53 3 * * 4"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The version, and the SHA-256 of the asset for this runner. Both were read at
+  # the commit this workflow lands on, and the hash was computed from the
+  # downloaded file rather than taken from a field:
+  #
+  #   curl -sSL -o gremlins.tar.gz https://github.com/go-gremlins/gremlins/releases/download/v0.6.0/gremlins_0.6.0_linux_amd64.tar.gz
+  #   sha256sum gremlins.tar.gz
+  #   b02a42e47935f891c9a411d68c07e211c7082609e79c2435b67c85ee9658c538  gremlins.tar.gz
+  #
+  # The publisher also ships checksums.txt in the same release, and it carries
+  # the same value for this asset. Two sources agreeing is why the line below is
+  # written once rather than argued about.
+  MUTATOR_VERSION: "0.6.0"
+  MUTATOR_SHA256: "b02a42e47935f891c9a411d68c07e211c7082609e79c2435b67c85ee9658c538"
+  # A mutant that never terminates - a loop counter decremented instead of
+  # incremented is the usual one - is stopped by a timeout derived from how long
+  # the unmutated suite takes. This suite runs in under a second, so the derived
+  # timeout is far shorter than the compile the mutant needs, and the run fills
+  # up with timeouts that say nothing. The coefficient is what buys the compile.
+  # A timed-out mutant is inconclusive, never a pass and never a failure.
+  MUTATOR_TIMEOUT_COEFFICIENT: "30"
+
+jobs:
+  mutation-testing:
+    name: mutation-testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Fetch the mutation tool and refuse anything but the pinned bytes
+        run: |
+          set -euo pipefail
+          url="https://github.com/go-gremlins/gremlins/releases/download/v${MUTATOR_VERSION}/gremlins_${MUTATOR_VERSION}_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location --output mutator.tar.gz "$url"
+          echo "${MUTATOR_SHA256}  mutator.tar.gz" > mutator.sha256
+          if ! sha256sum --check --strict mutator.sha256; then
+            echo "::error::The mutation tool downloaded from ${url} is not the pinned file. Nothing was measured."
+            exit 1
+          fi
+          tar xzf mutator.tar.gz gremlins
+          ./gremlins --version
+
+      - name: Measure each arithmetic package on its own
+        run: |
+          set -euo pipefail
+          # One run per package, because the tool takes coverage from the
+          # package it is pointed at and reports a subpackage's mutants as
+          # uncovered when that subpackage's own tests are what cover them. The
+          # exclusion below is the same fact from the other side.
+          ./gremlins unleash \
+            --timeout-coefficient="${MUTATOR_TIMEOUT_COEFFICIENT}" \
+            --exclude-files='approx/.*' \
+            --output=acoustic.json \
+            ./acoustic
+          ./gremlins unleash \
+            --timeout-coefficient="${MUTATOR_TIMEOUT_COEFFICIENT}" \
+            --output=acoustic-approx.json \
+            ./acoustic/approx
+
+      - name: Write the score where a later run can be compared against it
+        run: |
+          set -euo pipefail
+          {
+            echo "## Mutation score at \`${GITHUB_SHA}\`"
+            echo
+            echo "| package | efficacy | mutant coverage | killed | lived | not covered | timed out |"
+            echo "| --- | --- | --- | --- | --- | --- | --- |"
+            for f in acoustic.json acoustic-approx.json; do
+              jq -r --arg f "${f%.json}" '
+                "| \($f) | \(.test_efficacy | .*100 | round / 100)% | \(.mutations_coverage | .*100 | round / 100)% | \(.mutants_killed) | \(.mutants_lived) | \(.mutants_not_covered) | \([.files[].mutations[] | select(.status == "TIMED OUT")] | length) |"
+              ' "$f"
+            done
+            echo
+            echo "Every mutant below KILLED, one line each. What each one is and why it"
+            echo "survives is argued in \`.github/mutation-testing/README.md\`."
+            echo
+            echo '```'
+            for f in acoustic.json acoustic-approx.json; do
+              jq -r '.files[] as $file | $file.mutations[] | select(.status != "KILLED")
+                     | "\(.status)\t\($file.file_name)\t\(.line):\(.column)\t\(.type)"' "$f"
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the machine-readable result beside the run
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: mutation-score
+          path: |
+            acoustic.json
+            acoustic-approx.json
+          retention-days: 90
+
+      # There is deliberately no step that compares a score against a bar. The
+      # job's own success says the measurement ran, and nothing else.
