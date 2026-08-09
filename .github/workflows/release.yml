@@ -6,10 +6,11 @@
 # performs.
 #
 # It publishes nothing. Every run of this workflow is a dry run in the sense the
-# issue that asked for it uses: the artefact set is complete and it stays inside
-# the run, attached to it, where it can be downloaded and looked at. Signing the
-# set and publishing it is issue #127, and putting the two in one change would
-# mean the first tag that reached this file also went out to the world.
+# issue that asked for it means, which is that the artefact set is complete and
+# stays inside the run, attached to it, where it can be downloaded and looked at.
+# Signing the set and publishing it is issue #127, and putting the two in one
+# change would mean the first tag that reached this file also went out to the
+# world.
 #
 # What the tag has to be, and what happens when it is not, is decided in
 # cmd/release rather than in a step here. A rule written in a workflow step is a
