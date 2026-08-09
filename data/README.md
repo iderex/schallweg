@@ -44,16 +44,24 @@ somebody else's database.
 
 ## What is here today
 
-No records. What is here is this README and the machine-readable schema, in
-`schema/component-record.schema.json`.
+One record, the machine-readable schema in `schema/component-record.schema.json`,
+and this README.
 
     git ls-files 'data/**' | wc -l
-    2
+    3
+
+The one record is `floor/ift-17-002083-pr01-x01-x02.json`. It is here because
+entering a record by hand before an importer exists is the cheapest test of the
+schema, and what that test found is
+[../docs/first-record-by-hand.md](../docs/first-record-by-hand.md). Read that
+before adding a second record: it lists the fields the schema asks for that a
+published report does not print, the facts a report carries that a record cannot
+hold, and the ten decisions the entry needed that nothing in the tree records.
 
 Nothing in this repository validates anything against that schema yet. It is a
 document that says what a record must carry and no route reads it, so a record
 added today would be checked by whoever reviewed it and by nothing else. The
 check that closes that is issue #38.
 
-What provenance has to carry as a data model is issue #74, the first record
-entered by hand is issue #75, and the set the database starts with is issue #81.
+What provenance has to carry as a data model is issue #74, and the set the
+database starts with is issue #81.

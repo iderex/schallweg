@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "id": "ift-17-002083-pr01-x01-x02",
+  "kind": "floor",
+  "basis": "measured",
+  "mass_per_area": 180.1,
+  "thickness": 0.387,
+  "specimen_area": 20.0,
+  "airborne_single": {
+    "Rw": 79,
+    "C": -5,
+    "Ctr": -13,
+    "unit": "dB"
+  },
+  "impact_single": {
+    "Lnw": 42,
+    "CI": 0,
+    "unit": "dB"
+  },
+  "provenance": {
+    "laboratory": "ift Rosenheim GmbH, Labor Bauakustik",
+    "report_number": "17-002083-PR01 (PB X1-F03-04-de-02), measurement sheets 1 and 2, measurement numbers X01 and X02",
+    "report_date": "2019-03-21",
+    "test_standard": "EN ISO 10140-2:2010 for airborne and EN ISO 10140-3:2010+A1:2015 for impact, in a test facility to EN ISO 10140-5, rated to EN ISO 717-1:2013 and EN ISO 717-2:2013",
+    "client": "Holzbau Deutschland - Institut e.V., Berlin",
+    "product_designation": "Holzbalkendecke, Raster 833 mm",
+    "obtained_from": "https://informationsdienst-holz.de/fileadmin/Publikationen/6_Arbeitshilfen/PB_Decken_17-002083-PR01_PB_X1-F03-04-de-02.pdf, read on 2026-08-09",
+    "entered_by": "iderex",
+    "entered_on": "2026-08-09"
+  }
+}
