@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("schallweg-spectrum 1\nquantity R\nunit dB\nband-set core\nband 100 0.000000000001\nband 125 000\nband 160 0.00000000000000\nband 200 000\nband 250 000\nband 315 000\nband 400 000\nband 500 000\nband 630 00000\nband 800 000\nband 1000 0.0000\nband 1250 000\nband 1600 000\nband 2000 000\nband 2500 0.00000000000000000000000000\nband 3150 000")
