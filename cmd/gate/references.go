@@ -170,16 +170,28 @@ func external(target string) bool {
 // answer for.
 //
 // It has to contain a directory separator and end in one of the extensions
-// above, and it may not carry a character that means the token is a pattern, a
-// placeholder or a command's output rather than a file. A colon is excluded for
-// that last reason: `store/spectrum.go:481` is a line reference in quoted output
-// and the file it names exists, so reading it as a path would report a file that
-// is there as missing.
+// above, and it may not carry a character that makes it something other than a
+// path in this repository.
+//
+// Every character in the excluded set is there because the near-miss fixture
+// holds a token that needs it, and nothing is excluded because it might one day
+// matter. The angle brackets are a placeholder. The colon is an absolute path
+// with a drive letter, which resolves for whoever wrote it and for nobody else.
+//
+// The star and the question mark are the two whose reason a reader should not
+// take from the obvious example. A glob written as `**/testdata/byte-exact/*` is
+// refused by the extension test rather than by them, because it does not end in
+// one, and so is a line reference out of quoted output. They are needed for the
+// glob that does end in an extension, and the near-miss fixture carries one of
+// each.
+//
+// Removing any one of the four turns that fixture red, which is what says they
+// are all doing work rather than reading as though they are.
 func looksLikeAPath(token string) bool {
 	if !strings.Contains(token, "/") {
 		return false
 	}
-	if strings.ContainsAny(token, "<>*?:|$") {
+	if strings.ContainsAny(token, "<>*?:") {
 		return false
 	}
 	if strings.HasPrefix(token, "/") || strings.HasPrefix(token, "http") {

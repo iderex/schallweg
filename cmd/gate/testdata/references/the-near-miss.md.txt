@@ -39,6 +39,14 @@ A backticked placeholder, which names a shape rather than a file:
 
 A backticked pattern, which is a glob and not a path: `**/testdata/byte-exact/*`.
 
+A glob that does end in an extension, which is the one the star has to be
+excluded for: `cmd/gate/testdata/*/the-near-miss.md`.
+
+The same for the single-character wildcard: `cmd/gate/testdata/references/the-near-mis?.md`.
+
+A backticked absolute path, which names a place on one machine and resolves for
+nobody else: `D:/build/schallweg/docs/layout.md`.
+
 A backticked path with a line number after it, which is quoted output and whose
 file is in the tree: `cmd/gate/main.go:1`.
 
