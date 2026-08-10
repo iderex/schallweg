@@ -84,6 +84,41 @@ generated at run time is a fixture nobody can look at, and a test that fails on
 one seed in a thousand fails for somebody else, once, and cannot be reproduced
 from what they report.
 
+## Adding an invariant
+
+Several rules here are properties of the source rather than of a result: a layer
+that may not print, an arithmetic that lives in one place, a container with one
+route into it, a frequency that has to be asked for rather than written down.
+Each is refused by a reader in `cmd/gate`, and adding another is three things
+rather than one.
+
+The rule itself, in the reader whose subject it shares. Those readers parse Go
+and walk the syntax tree, which is what lets them tell a frequency in a
+calculation from the same frequency in a comment or inside a string. A rule a
+text search could express is still written this way, because the text form of
+every rule here so far fires on prose somebody wrote legitimately.
+
+A fixture that breaks it, and a near miss that does not. The near miss decides
+whether anybody can live with the rule and is worth more care than the fixture:
+it holds the legal thing that is one identifier away from the illegal one. Both
+go under `cmd/gate/testdata` with a `.go.txt` suffix, so the build never tries to
+compile them.
+
+A count rather than a presence. The way a rule like this fails is by matching
+nothing, which looks exactly like a clean tree, so the test says how many times
+the rule fired and not that it fired. Where the rule's subject is derived from
+somewhere else in the tree, a test asserts that the subject is not empty, for the
+same reason.
+
+The rule then reaches this repository through the test that runs the readers over
+it. Nothing has to be added to a list.
+
+Some rules are not properties of Go source at all: a bound in a schema with no
+unit beside it, a path out of one person's home directory, an address fetched in
+the clear. Those belong to the pattern analyser under `.github/opengrep`, whose
+rule set carries its own proof that every rule it declares finds exactly one
+thing in the fixtures written to be found.
+
 ## Sign off every commit
 
 Every commit needs a `Signed-off-by` line matching its author. It is how you
