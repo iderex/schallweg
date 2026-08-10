@@ -1,0 +1,22 @@
+{
+  "dependent_required_keyword": "present, and what it depends on is not",
+  "type_keyword": 3.5,
+  "enum_keyword": "three",
+  "const_keyword": "other",
+  "min_length_keyword": "ab",
+  "pattern_keyword": "ABC",
+  "minimum_keyword": -1,
+  "maximum_keyword": 11,
+  "exclusive_minimum_keyword": 0,
+  "min_items_keyword": [1],
+  "items_keyword": [1, "two"],
+  "min_properties_keyword": { "a": 1 },
+  "additional_properties_keyword": { "a": "not a number" },
+  "property_names_keyword": { "forbidden": 1 },
+  "ref_keyword": 7,
+  "all_of_keyword": "a",
+  "any_of_keyword": true,
+  "one_of_keyword": 4,
+  "if_then_keyword": "abc",
+  "else_keyword": true
+}

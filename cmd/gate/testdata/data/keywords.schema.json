@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/iderex/schallweg/cmd/gate/testdata/data/keywords.schema.json",
+  "title": "Every keyword this repository's schema reader implements",
+  "description": "A fixture schema, not a schema of anything. It exists so that each keyword the reader claims to implement is shown refusing something, because a keyword that is read and then does nothing is indistinguishable from one that is enforced. Each property below is named after the keyword it exercises, so a failure names the keyword that failed.",
+  "$comment": "The component record schema is where these keywords do real work. This one is where they are proven to bite.",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "minProperties": 1,
+  "required": ["required_keyword"],
+  "dependentRequired": { "dependent_required_keyword": ["required_keyword"] },
+  "properties": {
+    "required_keyword": { "type": "string" },
+    "dependent_required_keyword": { "type": "string" },
+    "type_keyword": { "type": "integer" },
+    "enum_keyword": { "enum": ["one", "two"] },
+    "const_keyword": { "const": "only" },
+    "min_length_keyword": { "type": "string", "minLength": 3 },
+    "pattern_keyword": { "type": "string", "pattern": "^[a-z]+$" },
+    "minimum_keyword": { "unit": "dB", "type": "number", "minimum": 0 },
+    "maximum_keyword": { "unit": "1", "type": "number", "maximum": 10 },
+    "exclusive_minimum_keyword": { "unit": "1", "type": "number", "exclusiveMinimum": 0 },
+    "min_items_keyword": { "type": "array", "minItems": 2 },
+    "items_keyword": { "type": "array", "items": { "type": "number" } },
+    "min_properties_keyword": { "type": "object", "minProperties": 2 },
+    "additional_properties_keyword": { "type": "object", "additionalProperties": { "type": "number" } },
+    "property_names_keyword": { "type": "object", "propertyNames": { "enum": ["allowed"] } },
+    "ref_keyword": { "$ref": "#/$defs/a_string" },
+    "all_of_keyword": { "allOf": [{ "type": "string" }, { "minLength": 2 }] },
+    "any_of_keyword": { "anyOf": [{ "type": "string" }, { "type": "number" }] },
+    "one_of_keyword": { "oneOf": [{ "unit": "1", "type": "number", "maximum": 5 }, { "unit": "1", "type": "number", "minimum": 4 }] },
+    "if_then_keyword": { "if": { "type": "string" }, "then": { "minLength": 4 } },
+    "else_keyword": { "if": { "type": "string" }, "then": true, "else": { "type": "number" } }
+  },
+  "$defs": {
+    "a_string": { "description": "The target of the reference above.", "type": "string" }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": 2,
+  "id": "the-near-miss-heavy-wall",
+  "kind": "wall",
+  "basis": "measured",
+  "mass_per_area": 420.0,
+  "thickness": 0.24,
+  "layers": [
+    { "material": "concrete", "thickness": 0.24, "density": 2300.0, "attachment": "bonded" }
+  ],
+  "specimen_area": 10.0,
+  "specimen_edges": [2.5, 4.0, 2.5, 4.0],
+  "lab_loss_factor": 0.03,
+  "lab_loss_factor_absent": "and a sentence saying there is none",
+  "airborne_lab": {
+    "band_set": "core",
+    "quantity": "R",
+    "unit": "dB",
+    "values": {
+      "100": 33.4, "125": 36.2, "160": 39.8, "200": 42.1,
+      "250": 45.7, "315": 48.3, "400": 51.0, "500": 53.6,
+      "630": 56.1, "800": 58.4, "1000": 60.9, "1250": 63.2,
+      "1600": 65.8, "2000": 68.1, "2500": 70.4,
+      "3150": { "bound": "at_least", "value": 72.0, "unit": "dB", "limited_by": "the limit of the fixture, which measures nothing" }
+    }
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and its numbers were invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": { "airborne": "no standard; this file is a fixture" },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in cmd/gate/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}

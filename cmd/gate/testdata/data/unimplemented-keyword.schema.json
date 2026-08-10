@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/iderex/schallweg/cmd/gate/testdata/data/unimplemented-keyword.schema.json",
+  "title": "A schema this repository's reader refuses",
+  "description": "It asks for patternProperties, which the reader does not implement. A reader that skipped the keyword instead would pass every instance the keyword would have refused, and it would pass them green.",
+  "type": "object",
+  "patternProperties": { "^band_": { "type": "number" } }
+}
