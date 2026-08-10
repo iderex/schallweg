@@ -1,0 +1,5 @@
+//go:build requires_instrument && linux
+
+package measurement
+
+func read() {}

@@ -115,23 +115,24 @@ jobs:
             exit 1
           fi
 
-      - name: Say what was not run
+      - name: Say what was not run, from the tree rather than from this file
         # A run that covered less than everything must not read like one that
-        # covered everything and found nothing. The harnesses named here are the
-        # ones docs/decisions/testability.md defines; none of them exists in the
-        # tree yet, and this step says so rather than leaving the reader to
-        # assume either way.
+        # covered everything and found nothing.
+        #
+        # This step used to answer that with a list written here, and a list
+        # written into a workflow is correct on the day it is written and wrong
+        # on the day a harness is added, which is the one day the answer changes.
+        # The leg reads the test targets out of the build and the harnesses out
+        # of the tree, so the disclosure moves when the tree does. It also
+        # refuses the shapes that would make the disclosure untrue: a harness
+        # whose name does not say what it requires, one with nothing written
+        # beside it, one whose files the ordinary run builds anyway, and a
+        # harness constraint outside the harness tree, which is skipped by every
+        # run and named by none.
+        env:
+          GOPROXY: "off"
         run: |
           set -euo pipefail
           echo "This job ran the ordinary suite only."
           echo
-          echo "Harnesses NOT run by this job, and what each would need:"
-          echo "  requires-display          a display or a substitute for one"
-          echo "  requires-instrument       a measurement instrument and its driver"
-          echo "  requires-third-party-tool another program, commercially licensed"
-          echo "  requires-network          outbound network access"
-          echo "  requires-elevation        an administrative account"
-          echo
-          echo "None of those harnesses exists in the tree today, so nothing was"
-          echo "skipped. When one exists, it is still not run here, and this list"
-          echo "is what says so."
+          go run ./cmd/gate harnesses
