@@ -136,6 +136,11 @@ func legs() []leg {
 			check: checkReferences,
 		},
 		{
+			name:  "data",
+			what:  "every data file in the tree matches the schema that claims it",
+			check: checkData,
+		},
+		{
 			name:  "harnesses",
 			what:  "the test targets the build reports, and every harness the tree holds",
 			check: checkHarnesses,
