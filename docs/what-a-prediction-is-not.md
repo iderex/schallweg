@@ -33,7 +33,7 @@ The accuracy the method claims for itself is stated in the standard's own text.
 That text is not in this repository and it was not read for this document, so no
 figure from it is quoted here. Somebody with a copy can read what it says. The
 absence of that figure here is deliberate and is explained in
-[docs/decisions/standard-text.md](docs/decisions/standard-text.md).
+[decisions/standard-text.md](decisions/standard-text.md).
 
 The accuracy other people have measured is a separate thing, it is published, and
 one figure from it is worth carrying. Simmons compared calculations under EN ISO
@@ -45,7 +45,7 @@ author, and it is not a general accuracy figure for this method or for this
 program. It is quoted because a reader deciding how much margin to leave is
 better served by one sourced number with its limits attached than by a sentence
 saying accuracy varies. The entry with its address is in
-[docs/validation-sources.md](docs/validation-sources.md).
+[validation-sources.md](validation-sources.md).
 
 What this program's own agreement with published results is has not been measured
 yet. When it has, it is reported in the validation record, including where it is
@@ -96,7 +96,7 @@ more likely than any of the others, because the output looks finished.
 
 ## Where this sits
 
-[NOTICE.md](NOTICE.md) carries the general intended-use notice and this document
+[../NOTICE.md](../NOTICE.md) carries the general intended-use notice and this document
 is the specific one. They do not conflict: the notice is about lawful use and
 this is about a number being read as more than it is.
 
