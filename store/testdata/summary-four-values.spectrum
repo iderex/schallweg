@@ -1,0 +1,8 @@
+schallweg-spectrum 1
+quantity R
+unit dB
+band-set core
+band 250 46.0
+band 500 53.9
+band 1000 59.0
+band 2000 62.8
