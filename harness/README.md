@@ -33,9 +33,15 @@ disappear into a green figure.
 
 ## What is here today
 
-Nothing. No harness exists, so nothing is being skipped, and the test workflow
-says exactly that at the end of every run rather than leaving a reader to assume
-either way.
+Nothing. No harness exists, so nothing is being skipped, and every run says
+exactly that rather than leaving a reader to assume either way.
+
+What says it is the `harnesses` leg of `go run ./cmd/gate`, which reads this
+directory and the build constraints in the tree rather than a list somebody
+wrote down. The same leg refuses a harness whose name does not say what it
+requires, one with no statement beside it, one whose files the ordinary run
+builds anyway, and a harness constraint outside this directory, which would be
+skipped by every run and named by none.
 
 The first one this project knows it will need is `requires-third-party-tool`, for
 comparing against a second implementation of the standard, which is issue #87.

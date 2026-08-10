@@ -131,6 +131,11 @@ func legs() []leg {
 			},
 		},
 		{
+			name:  "harnesses",
+			what:  "the test targets the build reports, and every harness the tree holds",
+			check: checkHarnesses,
+		},
+		{
 			name:  "coverage",
 			what:  "the surfaces that decide a number stand above the coverage bar",
 			check: checkCoverage,

@@ -1,0 +1,6 @@
+//go:build requires_third_party_tool
+
+// Package comparison runs this implementation against a commercial one.
+package comparison
+
+func compare() {}
