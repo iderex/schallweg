@@ -131,6 +131,11 @@ func legs() []leg {
 			},
 		},
 		{
+			name:  "refs",
+			what:  "every file a tracked document points at is in this repository",
+			check: checkReferences,
+		},
+		{
 			name:  "harnesses",
 			what:  "the test targets the build reports, and every harness the tree holds",
 			check: checkHarnesses,

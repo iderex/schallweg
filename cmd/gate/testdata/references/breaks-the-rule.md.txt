@@ -1,0 +1,13 @@
+# A document that points at things that are not there
+
+This links to a document that was moved and never followed:
+[decisions/moved-away.md](decisions/moved-away.md).
+
+It links to a file at the repository root that is not there either, from a
+document that lives in a subdirectory: [NOTICE.md](NOTICE.md).
+
+It names a source file in backticks that nothing in the tree holds,
+`cmd/gate/no-such-reader.go`, in the middle of a sentence.
+
+It names a schema the same way, `data/schema/no-such-record.schema.json`, which
+is the shape a renamed schema leaves behind.

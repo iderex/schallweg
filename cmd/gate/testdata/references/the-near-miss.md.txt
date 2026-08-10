@@ -1,0 +1,57 @@
+# A document that does every one of those things legally
+
+Each thing below is one character, one directory or one pair of backticks away
+from the fixture that breaks the rule, and every one of them has to pass. This
+fixture is the one that decides whether anybody can live with the reader.
+
+A link to a document that is there, written from this document's own directory:
+[decisions/layering.md](decisions/layering.md).
+
+The same target written from the repository root, which is the other convention
+these documents use: [docs/decisions/layering.md](../docs/decisions/layering.md).
+
+A link to a file at the repository root, reached the way a document in a
+subdirectory has to reach it: [../NOTICE.md](../NOTICE.md).
+
+A link out of this repository, which nothing here answers for:
+[the standard's publisher](https://www.iso.org/standard/no-such-thing.html).
+
+A link to a place inside this document, which names no file at all:
+[the section above](#a-document-that-does-every-one-of-those-things-legally).
+
+A link to a heading inside another document, where the fragment is not part of
+the file name: [layering](decisions/layering.md#what-this-costs).
+
+A directory rather than a file, which exists and which git tracks no entry for:
+[decisions](decisions).
+
+A backticked path that is there, written from the repository root:
+`cmd/gate/references.go`.
+
+A backticked token with a slash and no extension, which is a directory and not a
+claim about a file: `store/testdata`.
+
+A backticked token with a slash that is a symbol rather than a path, which is
+how this project writes a quantity: `L_n/L_nw`.
+
+A backticked placeholder, which names a shape rather than a file:
+`store/check/<id>.md`.
+
+A backticked pattern, which is a glob and not a path: `**/testdata/byte-exact/*`.
+
+A backticked path with a line number after it, which is quoted output and whose
+file is in the tree: `cmd/gate/main.go:1`.
+
+A fenced block full of paths that were true when the command ran, none of which
+this reader may read:
+
+```
+$ git grep -n 'a rule that has moved' -- docs/
+docs/gone/removed-in-an-earlier-release.md:14:a rule that has moved
+$ ls /tmp/schallweg-gate-build-4021/no-such-thing
+```
+
+A path in an indented block, which is the other way this repository quotes a
+command:
+
+    $ cat docs/never-existed.md
