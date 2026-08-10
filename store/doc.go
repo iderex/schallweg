@@ -16,6 +16,10 @@
 // the refusal when one is absent is written here rather than in the kernel.
 //
 // What is here today is the spectrum exchange format, specified in
-// docs/formats/spectrum.md and read and written here. Issue #73 adds the record
-// schema and issue #91 the project file.
+// docs/formats/spectrum.md and read and written here, and the component record,
+// whose schema is data/schema/component-record.schema.json and whose one route
+// into a value is ReadConstruction. The project file is issue #91, and the
+// element that lives inside one arrives with it: an element is an instance of a
+// construction in a building and is never a database record, which is
+// docs/decisions/element-model.md.
 package store

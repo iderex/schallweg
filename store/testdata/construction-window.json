@@ -1,0 +1,82 @@
+{
+  "schema": 2,
+  "id": "fixture-window",
+  "kind": "window",
+  "basis": "measured",
+  "mass_per_area": 30.0,
+  "thickness": 0.024,
+  "layers": [
+    {
+      "material": "glass",
+      "thickness": 0.006,
+      "density": 2500.0,
+      "attachment": "free"
+    },
+    {
+      "material": "cavity",
+      "thickness": 0.012,
+      "mass_per_area": 0.02,
+      "attachment": "free"
+    },
+    {
+      "material": "glass",
+      "thickness": 0.006,
+      "density": 2500.0,
+      "attachment": "free"
+    }
+  ],
+  "specimen_area": 1.44,
+  "specimen_edges": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+  ],
+  "lab_loss_factor": 0.05,
+  "airborne_lab": {
+    "band_set": "core",
+    "quantity": "R",
+    "unit": "dB",
+    "values": {
+      "100": 25.0,
+      "125": 25.9,
+      "160": 26.8,
+      "200": 27.7,
+      "250": 28.6,
+      "315": 29.5,
+      "400": 30.4,
+      "500": 31.3,
+      "630": 32.2,
+      "800": 33.1,
+      "1000": 34.0,
+      "1250": 34.9,
+      "1600": 35.8,
+      "2000": 36.7,
+      "2500": {
+        "bound": "at_least",
+        "value": 38.0,
+        "unit": "dB",
+        "limited_by": "the limit of the fixture, which measures nothing"
+      },
+      "3150": {
+        "bound": "at_least",
+        "value": 38.0,
+        "unit": "dB",
+        "limited_by": "the limit of the fixture, which measures nothing"
+      }
+    }
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and every number in it was invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": {
+      "airborne": "no standard; this file is a fixture"
+    },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in store/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}

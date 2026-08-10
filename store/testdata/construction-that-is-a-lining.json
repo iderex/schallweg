@@ -1,0 +1,52 @@
+{
+  "schema": 2,
+  "id": "fixture-lining",
+  "kind": "lining",
+  "mass_per_area": 12.0,
+  "thickness": 0.05,
+  "layers": [
+    {
+      "material": "gypsum board",
+      "thickness": 0.0125,
+      "mass_per_area": 10.0,
+      "attachment": "resiliently fixed"
+    }
+  ],
+  "base_construction": "fixture-heavy-wall",
+  "improvement": {
+    "band_set": "core",
+    "quantity": "DR",
+    "unit": "dB",
+    "values": {
+      "100": 0.0,
+      "125": 1.0,
+      "160": 2.0,
+      "200": 3.0,
+      "250": 4.0,
+      "315": 5.0,
+      "400": 6.0,
+      "500": 7.0,
+      "630": 8.0,
+      "800": 9.0,
+      "1000": 10.0,
+      "1250": 11.0,
+      "1600": 12.0,
+      "2000": 13.0,
+      "2500": 14.0,
+      "3150": 15.0
+    }
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and every number in it was invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": {
+      "airborne": "no standard; this file is a fixture"
+    },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in store/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}

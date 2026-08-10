@@ -1,0 +1,84 @@
+{
+  "schema": 2,
+  "id": "fixture-concrete-floor",
+  "kind": "floor",
+  "basis": "measured",
+  "mass_per_area": 460.0,
+  "thickness": 0.2,
+  "layers": [
+    {
+      "material": "concrete",
+      "thickness": 0.2,
+      "density": 2300.0,
+      "attachment": "bonded"
+    }
+  ],
+  "specimen_area": 20.0,
+  "specimen_edges": [
+    4.0,
+    5.0,
+    4.0,
+    5.0
+  ],
+  "lab_loss_factor": 0.025,
+  "airborne_lab": {
+    "band_set": "core",
+    "quantity": "R",
+    "unit": "dB",
+    "values": {
+      "100": 36.0,
+      "125": 37.5,
+      "160": 39.0,
+      "200": 40.5,
+      "250": 42.0,
+      "315": 43.5,
+      "400": 45.0,
+      "500": 46.5,
+      "630": 48.0,
+      "800": 49.5,
+      "1000": 51.0,
+      "1250": 52.5,
+      "1600": 54.0,
+      "2000": 55.5,
+      "2500": 57.0,
+      "3150": 58.5
+    }
+  },
+  "impact_lab": {
+    "band_set": "core",
+    "quantity": "Ln",
+    "unit": "dB",
+    "values": {
+      "100": 78.0,
+      "125": 76.8,
+      "160": 75.6,
+      "200": 74.4,
+      "250": 73.2,
+      "315": 72.0,
+      "400": 70.8,
+      "500": 69.6,
+      "630": 68.4,
+      "800": 67.2,
+      "1000": 66.0,
+      "1250": 64.8,
+      "1600": 63.6,
+      "2000": 62.4,
+      "2500": 61.2,
+      "3150": 60.0
+    }
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and every number in it was invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": {
+      "airborne": "no standard; this file is a fixture",
+      "impact": "no standard; this file is a fixture"
+    },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in store/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}

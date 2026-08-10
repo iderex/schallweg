@@ -1,0 +1,39 @@
+{
+  "schema": 2,
+  "id": "fixture-rating-only-floor",
+  "kind": "floor",
+  "basis": "measured",
+  "mass_per_area": 180.1,
+  "thickness": 0.387,
+  "airborne_single": {
+    "Rw": 79,
+    "C": {
+      "unstated": -5
+    },
+    "Ctr": {
+      "unstated": -13
+    },
+    "unit": "dB"
+  },
+  "impact_single": {
+    "Lnw": 42,
+    "CI": {
+      "unstated": 0
+    },
+    "unit": "dB"
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and every number in it was invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": {
+      "airborne_rating": "no standard; this file is a fixture",
+      "impact_rating": "no standard; this file is a fixture"
+    },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in store/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}
