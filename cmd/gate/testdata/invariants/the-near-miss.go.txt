@@ -1,0 +1,64 @@
+// Every declaration here is one identifier or one character away from a
+// declaration in the fixture that breaks the rules, and every one of them is
+// legal in every layer.
+//
+// This is the half that decides whether anybody can live with the two readers. A
+// rule that refuses the route itself, the error path of every function in the
+// floor, or a number written in a comment is a rule that gets switched off.
+
+package calculation
+
+// The route itself. The one place a container may be filled is the function the
+// rule names, and reading this file as the floor leaves it silent.
+func New(set BandSet, values []float64) (Spectrum, error) {
+	if len(values) == 0 {
+		return Spectrum{}, errNothingToBuild
+	}
+	return Spectrum{set: set, values: values}, nil
+}
+
+// The octave container's route, which has a different name and is silent for the
+// same reason.
+func EnergySumToOctave(values []float64) (OctaveSpectrum, error) {
+	if len(values) == 0 {
+		return OctaveSpectrum{}, errNothingToBuild
+	}
+	return OctaveSpectrum{values: values}, nil
+}
+
+// An empty literal carries no values and is how every function in the floor
+// returns a failure. A rule refusing this would refuse the error path of the
+// whole layer.
+func widened(s Spectrum) (Spectrum, error) {
+	if s.set == 0 {
+		return Spectrum{}, errNothingToBuild
+	}
+	return s, nil
+}
+
+// A type whose name begins with a container's name is not that container.
+type SpectrumReader struct{ set BandSet }
+
+func read() SpectrumReader { return SpectrumReader{set: Core} }
+
+// A band centre with a name is the repair rather than the defect, and a const
+// block is where it goes.
+const (
+	millimetresPerMetre = 1000
+	referenceArea       = 500
+)
+
+// A const inside a function body is the same declaration and is read the same
+// way.
+func scaled(width int) int {
+	const centresPerMetre = 100
+	return width / centresPerMetre
+}
+
+// A centre inside a string is a string, and a centre in a comment is a comment:
+// nothing here is about the 100 Hz band, about a certificate that stops at
+// 3150 Hz, or about the 50 Hz band the extended set adds.
+func describe() string { return "the 1000 Hz band" }
+
+// Numbers that are not centres, in the sizes and counts a calculation carries.
+func sizes() []int { return []int{16, 21, 64, 1024} }

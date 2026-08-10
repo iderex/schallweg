@@ -264,8 +264,13 @@ var transcendentalCalls = map[string]bool{
 	"Pow": true, "Pow10": true,
 }
 
-// checkSource reports the two rules that are properties of what a package's
-// source calls rather than of what it imports.
+// checkSource reports the rules that are properties of what a package's source
+// says rather than of what it imports.
+//
+// Two of them are its own, and they are about what a package calls: printing
+// below the command line, and decibel arithmetic outside the floor. The rest are
+// in invariants.go, which is handed the same parsed file rather than parsing it
+// a second time, and which is about what a calculation writes down.
 //
 // path is used only for reporting, so a caller may pass a fixture's name. l is
 // the layer the file is in.
@@ -337,6 +342,8 @@ func checkSource(path string, src []byte, l layer) ([]violation, error) {
 		}
 		return true
 	})
+
+	found = append(found, checkInvariants(path, fset, file, l)...)
 
 	sort.SliceStable(found, func(i, j int) bool { return found[i].Line < found[j].Line })
 	return found, nil

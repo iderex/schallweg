@@ -1,0 +1,39 @@
+// A file that breaks both invariants, in every spelling each reader claims to
+// see. It is read as a fixture and never built, so the types it names do not
+// have to exist.
+//
+// It is read twice, once as the numeric floor and once as the kernel, because
+// the two rules apply to different layers and each has to be counted where it
+// applies.
+
+package calculation
+
+// A container filled at package level, outside every function and so outside
+// every route.
+var prebuilt = Spectrum{set: Core, values: make([]float64, 16)}
+
+// A container filled in a function that is not its route. This is the shape the
+// rule exists against: the band count, the band order and the finiteness of
+// every value are checked in New and in nothing else, and this produces a value
+// that is indistinguishable from a checked one.
+func widened(set BandSet, values []float64) Spectrum {
+	return Spectrum{set: set, values: values}
+}
+
+// The same for the octave container, whose route has a different name.
+func toOctaves(values []float64) OctaveSpectrum {
+	s := OctaveSpectrum{values: values}
+	return s
+}
+
+// A band centre compared against, and another returned.
+func lowest(centres []int) int {
+	if centres[0] == 100 {
+		return 50
+	}
+	return centres[0]
+}
+
+// The series rebuilt by hand, including two spellings of one centre that a
+// pattern over the text would read as different numbers.
+func series() []int { return []int{1_000, 0x3e8, 3150} }
