@@ -1,0 +1,124 @@
+# Fuzzing the parsers that take bytes somebody else wrote.
+#
+# The threat model for a desk-side tool is one sentence: a user opens a document
+# a colleague sent them. Everything that reaches a parser here arrives that way,
+# so a parser is the only surface in this repository where the input is chosen by
+# somebody other than the person running the program.
+#
+# It runs on a schedule and by hand rather than on a pull request, and that is a
+# statement about what fuzzing is rather than about what it costs. A fuzz run is
+# a search with no end: the same target on the same commit finds different things
+# in two runs, and finds nothing at all in a run short enough to sit in front of
+# a merge. Putting it on a pull request would either make the merge wait for a
+# search that is not finished, or shorten the search until a green result means
+# nothing was looked for. What guards a pull request instead is the seed corpus,
+# which the ordinary suite runs on every commit: `go test ./...` executes every
+# committed corpus entry as an ordinary test case, so a finding this job makes
+# today becomes a refusal on every pull request tomorrow, as soon as its input is
+# committed.
+#
+# The targets are read out of the tree rather than listed here. A list in this
+# file would drift against the targets that exist, and the direction it drifts is
+# the quiet one: a target nobody added to the list is a parser that is never
+# fuzzed by a job whose name says the parsers are fuzzed.
+name: Fuzzing
+
+on:
+  schedule:
+    # Weekly, at a time no other workflow here uses, so a scheduled run is
+    # legible in the run list on its own.
+    - cron: "19 2 * * 6"
+  workflow_dispatch:
+    inputs:
+      fuzztime:
+        description: "How long to run each target, as a Go duration."
+        required: false
+        default: "10m"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzzing:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to the job id, so renaming the id does not rename the check.
+    name: fuzzing
+    runs-on: ubuntu-latest
+    # Generous against the fuzz budget below, because the job also builds and
+    # because a target that hangs has to be allowed to hit the fuzzer's own
+    # timeout rather than this one: a job killed here reports nothing, and a
+    # target killed by `-timeout` reports the input that hung it.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+      # A scheduled run has no inputs, so the default belongs here as well as on
+      # the dispatch input above.
+      FUZZTIME: ${{ inputs.fuzztime || '10m' }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Fuzz every target the tree holds
+        run: |
+          set -euo pipefail
+          found=0
+          for pkg in $(go list ./...); do
+            # `|| true` on the grep alone: a package with no fuzz target is the
+            # ordinary case and is not a failure, while a `go test -list` that
+            # fails still reds the job through the pipefail above.
+            targets=$(go test -list='^Fuzz' "$pkg" | { grep '^Fuzz' || true; })
+            for target in $targets; do
+              found=$((found + 1))
+              echo "::group::$pkg $target for $FUZZTIME"
+              # -timeout is what turns a target that does not finish into a
+              # reported input rather than a job that runs until the ceiling
+              # above. It is per test binary and has to stand above the fuzz
+              # budget, or the run is cut off while it is still searching.
+              go test "$pkg" \
+                -run=NONE \
+                -fuzz="^${target}\$" \
+                -fuzztime="$FUZZTIME" \
+                -timeout=50m
+              echo "::endgroup::"
+            done
+          done
+          # A count rather than a presence. The way this job fails is by finding
+          # no target and reporting a clean run, which reads exactly like a run
+          # that fuzzed everything and found nothing.
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No fuzz target was found in this module, so nothing was fuzzed. A green run of this job would have said the parsers were searched."
+            exit 1
+          fi
+          echo "$found target(s) were fuzzed for $FUZZTIME each."
+
+      - name: Keep the input behind a finding, since a finding is only worth its reproduction
+        # A failing run writes the input under the package's own corpus
+        # directory. Uploading it is what lets somebody commit it as a
+        # regression case; without this step a finding lives only in the log as
+        # an escaped string somebody has to retype.
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: fuzz-findings
+          path: "**/testdata/fuzz/**"
+          if-no-files-found: ignore
+          retention-days: 90
+
+      # There is deliberately no step that compares a count of executions against
+      # a bar. The job's own success says every target the tree holds was
+      # searched for the stated time, and nothing else. A search that finds
+      # nothing is not evidence that there is nothing to find.
