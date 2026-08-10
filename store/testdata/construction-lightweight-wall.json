@@ -1,0 +1,89 @@
+{
+  "schema": 2,
+  "id": "fixture-lightweight-wall",
+  "kind": "wall",
+  "basis": "measured",
+  "mass_per_area": 45.0,
+  "thickness": 0.155,
+  "layers": [
+    {
+      "material": "gypsum board",
+      "thickness": 0.0125,
+      "mass_per_area": 10.0,
+      "attachment": "mechanically fixed"
+    },
+    {
+      "material": "gypsum board",
+      "thickness": 0.0125,
+      "mass_per_area": 10.0,
+      "attachment": "mechanically fixed"
+    },
+    {
+      "material": "cavity with absorbent",
+      "thickness": 0.105,
+      "mass_per_area": 1.0,
+      "attachment": "resiliently fixed"
+    },
+    {
+      "material": "gypsum board",
+      "thickness": 0.0125,
+      "mass_per_area": 10.0,
+      "attachment": "mechanically fixed"
+    },
+    {
+      "material": "gypsum board",
+      "thickness": 0.0125,
+      "mass_per_area": 10.0,
+      "attachment": "mechanically fixed"
+    }
+  ],
+  "specimen_area": 10.0,
+  "specimen_edges": [
+    2.5,
+    4.0,
+    2.5,
+    4.0
+  ],
+  "lab_loss_factor_absent": "No loss factor is printed on this fixture, because there is no report behind it. The field is here so that the case of a certificate that publishes a spectrum and no loss factor is exercised.",
+  "airborne_lab": {
+    "band_set": "extended",
+    "quantity": "R",
+    "unit": "dB",
+    "values": {
+      "50": 26.0,
+      "63": 28.0,
+      "80": 24.0,
+      "100": 25.0,
+      "125": 34.0,
+      "160": 36.0,
+      "200": 38.0,
+      "250": 40.0,
+      "315": 42.0,
+      "400": 44.0,
+      "500": 46.0,
+      "630": 48.0,
+      "800": 50.0,
+      "1000": 52.0,
+      "1250": 54.0,
+      "1600": 56.0,
+      "2000": 58.0,
+      "2500": 60.0,
+      "3150": 62.0,
+      "4000": 64.0,
+      "5000": 66.0
+    }
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and every number in it was invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": {
+      "airborne": "no standard; this file is a fixture"
+    },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in store/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}

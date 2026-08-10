@@ -1,0 +1,60 @@
+{
+  "schema": 2,
+  "id": "fixture-heavy-wall",
+  "kind": "wall",
+  "basis": "measured",
+  "mass_per_area": 552.0,
+  "thickness": 0.24,
+  "layers": [
+    {
+      "material": "concrete",
+      "thickness": 0.24,
+      "density": 2300.0,
+      "attachment": "bonded"
+    }
+  ],
+  "specimen_area": 10.0,
+  "specimen_edges": [
+    2.5,
+    4.0,
+    2.5,
+    4.0
+  ],
+  "lab_loss_factor": 0.03,
+  "airborne_lab": {
+    "band_set": "core",
+    "quantity": "R",
+    "unit": "dB",
+    "values": {
+      "100": 38.0,
+      "125": 39.6,
+      "160": 41.2,
+      "200": 42.8,
+      "250": 44.4,
+      "315": 46.0,
+      "400": 47.6,
+      "500": 49.2,
+      "630": 50.8,
+      "800": 52.4,
+      "1000": 54.0,
+      "1250": 55.6,
+      "1600": 57.2,
+      "2000": 58.8,
+      "2500": 60.4,
+      "3150": 62.0
+    }
+  },
+  "provenance": {
+    "laboratory": "No laboratory. This file is a fixture and every number in it was invented.",
+    "report_number": "no report; this file is a fixture",
+    "report_date": "2026-01-02",
+    "test_standards": {
+      "airborne": "no standard; this file is a fixture"
+    },
+    "client": "no client; this file is a fixture",
+    "specimen_designation": "no specimen was tested; this file is a fixture",
+    "obtained_from": "Nowhere. This file lives in store/testdata and is not a component record. Nothing here may be copied into data/.",
+    "entered_by": "nobody; this file is a fixture",
+    "entered_on": "2026-01-02"
+  }
+}
