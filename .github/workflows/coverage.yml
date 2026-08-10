@@ -1,0 +1,58 @@
+# The coverage bar, pinned to the surfaces that decide a number.
+#
+# What it protects is written at the constant it compares against, in
+# cmd/gate/coverage.go, rather than here, so the number and its argument cannot
+# drift apart across two files. This job is the route that runs it on every pull
+# request; the same leg runs locally from `go run ./cmd/gate`.
+#
+# It asks the gate for one leg by name. A run of the whole gate here would repeat
+# the build, the vet and the suite that already have checks of their own, and a
+# check-run called `coverage` that reports a formatting failure is a check whose
+# name is a lie. The gate refuses a leg name nothing answers to, so this job
+# cannot pass by having run nothing.
+#
+# What this job does not claim. It runs the suite to measure it, with no network
+# denied and nothing said about a display or a device. The four testability
+# conditions are held by the `test` job and this one asserts none of them.
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    # This `name:` is the literal check-run name, set explicitly rather than left
+    # to default to the job id, so renaming the job id cannot silently change the
+    # name a required-check list matches. Issue #36 collects the names to require.
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      GOFLAGS: -mod=readonly
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Measure the deciding surfaces against the bar
+        env:
+          GOPROXY: "off"
+        run: go run ./cmd/gate coverage

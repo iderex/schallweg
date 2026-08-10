@@ -120,7 +120,9 @@ a percentage in a workflow file:
 
 That shape is worth adopting whatever the number becomes, because a bar pinned to
 the surfaces that decide the outcome says something a bar over the whole tree does
-not.
+not. It is adopted: the number and the list of surfaces sit in
+`cmd/gate/coverage.go`, beside the argument for both, and the check reports the
+whole-tree figure without gating on it.
 
 ## What this repository adds that the reference has none of
 
@@ -145,10 +147,14 @@ the product, and a check that refuses a moved result unless the move is recorded
 with a reason is a control the reference has no analogue for and no need of. It is
 planned and it is in the quality milestone.
 
-**The coverage bar's subject, #104, is the second and it is not settled.** Pinning
-a high bar to the surfaces that decide a number argues for a higher bar than the
-reference's, on a smaller surface, and this document does not decide the number.
-Recording that the argument points upward is what it does.
+**The coverage bar's subject, #104, is the second, and the number is now
+decided.** Pinning a high bar to the surfaces that decide a number argued for a
+higher bar than the reference's, on a smaller surface. The bar is 93.0 against
+the reference's 92.0, the surface it applies to is the arithmetic rather than the
+tree, and the reasoning for both is at the constant in `cmd/gate/coverage.go`
+rather than restated here. What is still open is the surface's size: one package
+carries it today, and the rating procedures, the in situ correction and the path
+evaluation each join the list in the change that writes them.
 
 **The third is the one this document must not claim.** A gate is stronger than
 another gate when it refuses more of what matters, and this one currently refuses

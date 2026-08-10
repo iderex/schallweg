@@ -7,12 +7,16 @@
 //
 // It also says what it examined. A leg that was not asked for prints that it was
 // not asked for and what asking would cost, so a run that covered less than the
-// whole set cannot be read as one that covered it and found nothing.
+// whole set cannot be read as one that covered it and found nothing. Naming legs
+// on the command line runs those and prints the rest under the same rule, which
+// is how a job on the server asks for one of them without the run reading as the
+// whole gate.
 package main
 
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +24,7 @@ import (
 )
 
 func main() {
-	if err := run(os.Stdout); err != nil {
+	if err := run(os.Stdout, os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "\ngate: %v\n", err)
 		os.Exit(1)
 	}
@@ -29,10 +33,14 @@ func main() {
 // leg is one check. Its name is what the run prints, and its check reports a
 // failure by returning an error whose message is what the contributor has to act
 // on.
+//
+// A check writes to out for what it measured and did not gate on. A number a
+// leg reports without refusing it is not a failure and must still be readable,
+// and the alternative is a leg that keeps the figure to itself.
 type leg struct {
 	name  string
 	what  string
-	check func(root string) error
+	check func(root string, out io.Writer) error
 }
 
 // notAsked is a check this repository has, which this command does not run.
@@ -48,7 +56,7 @@ func legs() []leg {
 		{
 			name: "format",
 			what: "every Go file is gofmt formatted",
-			check: func(root string) error {
+			check: func(root string, _ io.Writer) error {
 				out, err := output(root, "gofmt", "-l", ".")
 				if err != nil {
 					return err
@@ -62,7 +70,7 @@ func legs() []leg {
 		{
 			name: "vet",
 			what: "go vet over every package",
-			check: func(root string) error {
+			check: func(root string, _ io.Writer) error {
 				_, err := output(root, "go", "vet", "./...")
 				return err
 			},
@@ -70,7 +78,7 @@ func legs() []leg {
 		{
 			name: "build",
 			what: "every package builds, into a temporary directory outside the tree",
-			check: func(root string) error {
+			check: func(root string, _ io.Writer) error {
 				dir, err := os.MkdirTemp("", "schallweg-gate-build-")
 				if err != nil {
 					return err
@@ -83,7 +91,7 @@ func legs() []leg {
 		{
 			name: "test",
 			what: "the ordinary suite, with the result cache defeated",
-			check: func(root string) error {
+			check: func(root string, _ io.Writer) error {
 				out, err := output(root, "go", "test", "./...", "-count=1")
 				if err != nil {
 					return err
@@ -97,7 +105,7 @@ func legs() []leg {
 		{
 			name: "docs",
 			what: "no hard tab and no trailing whitespace in tracked Markdown",
-			check: func(root string) error {
+			check: func(root string, _ io.Writer) error {
 				for _, scan := range []struct {
 					pattern string
 					wrong   string
@@ -121,6 +129,11 @@ func legs() []leg {
 				}
 				return nil
 			},
+		},
+		{
+			name:  "coverage",
+			what:  "the surfaces that decide a number stand above the coverage bar",
+			check: checkCoverage,
 		},
 	}
 }
@@ -146,7 +159,46 @@ func notAskedFor() []notAsked {
 	}
 }
 
-func run(out *os.File) error {
+// selectLegs is which legs an invocation runs and which it leaves, from the
+// names given on the command line.
+//
+// No name means every leg. An unknown name is refused rather than ignored,
+// because a job asking for a leg that has been renamed would otherwise report a
+// pass having run nothing, which is the failure the run's own disclosure exists
+// against.
+func selectLegs(all []leg, names []string) (run, left []leg, err error) {
+	if len(names) == 0 {
+		return all, nil, nil
+	}
+	wanted := map[string]bool{}
+	for _, n := range names {
+		known := false
+		for _, l := range all {
+			if l.name == n {
+				known = true
+				break
+			}
+		}
+		if !known {
+			var have []string
+			for _, l := range all {
+				have = append(have, l.name)
+			}
+			return nil, nil, fmt.Errorf("there is no leg called %q; the legs are %s", n, strings.Join(have, ", "))
+		}
+		wanted[n] = true
+	}
+	for _, l := range all {
+		if wanted[l.name] {
+			run = append(run, l)
+		} else {
+			left = append(left, l)
+		}
+	}
+	return run, left, nil
+}
+
+func run(out io.Writer, names []string) error {
 	root, err := repoRoot()
 	if err != nil {
 		return err
@@ -154,16 +206,25 @@ func run(out *os.File) error {
 
 	fmt.Fprintf(out, "gate: %s\n\n", root)
 
-	all := legs()
-	for _, l := range all {
+	asked, left, err := selectLegs(legs(), names)
+	if err != nil {
+		return err
+	}
+	for _, l := range asked {
 		fmt.Fprintf(out, "  %-8s %s\n", l.name, l.what)
-		if err := l.check(root); err != nil {
+		if err := l.check(root, out); err != nil {
 			fmt.Fprintf(out, "  %-8s FAILED\n", l.name)
 			return fmt.Errorf("%s: %w", l.name, err)
 		}
 	}
 
-	fmt.Fprintf(out, "\n%d leg(s) ran and passed.\n", len(all))
+	fmt.Fprintf(out, "\n%d leg(s) ran and passed.\n", len(asked))
+	if len(left) > 0 {
+		fmt.Fprintf(out, "\nLegs this invocation did not ask for:\n")
+		for _, l := range left {
+			fmt.Fprintf(out, "  %-8s %s\n", l.name, l.what)
+		}
+	}
 	fmt.Fprintf(out, "\nNot asked for by this command:\n")
 	for _, n := range notAskedFor() {
 		fmt.Fprintf(out, "  %s\n    asking would cost: %s\n", n.name, n.cost)
