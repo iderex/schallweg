@@ -162,7 +162,8 @@ than adding to it.
 
 ## What was not analysed
 
-This section exists so the document cannot be read as complete.
+None of the following was analysed. A reader who stops above this heading has
+read a document that is incomplete by exactly this list.
 
 No adversary with resources was modelled, and nothing here has been tested
 against one.

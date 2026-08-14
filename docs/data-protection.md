@@ -8,9 +8,9 @@ not been measured, it says so in the same sentence rather than in a footnote.
 
 The operator of this software is a consultancy or an engineering office running
 it on their own machine for their own client. That operator is responsible for
-the personal data in their projects. This document exists so that the
-responsibility can be discharged from stated facts instead of from assumptions
-about what a program might be doing.
+the personal data in their projects, and the facts below are what that
+responsibility is discharged from, instead of assumptions about what a program
+might be doing.
 
 ## What personal data this software can hold
 

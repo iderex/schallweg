@@ -81,8 +81,8 @@ bands in all, which is what a certificate carries when the low frequency
 behaviour is the point, and low frequency behaviour is where lightweight
 construction actually fails.
 
-The extended bands are optional, and optional has a precise meaning here that is
-the whole reason this section exists. It does not mean a spectrum may contain
+The extended bands are optional, and optional has a precise meaning here, which
+is the meaning that follows. It does not mean a spectrum may contain
 some of them. It means a spectrum is on the core set or on the extended set, that
 which one it is on is a property of the value and is never inferred, and that an
 operation combining two spectra on different sets refuses rather than padding,

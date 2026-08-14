@@ -151,8 +151,7 @@ ships rather than when the workload happens to reach it.
 The ordinary test suite already forbids the network to itself, by
 [testability.md](testability.md), and that is not the same guarantee. It says the
 tests do not connect. It says nothing about the program, and treating one as
-evidence for the other is exactly the substitution this section exists to
-prevent.
+evidence for the other is exactly the substitution that must not be made.
 
 ## What is not claimed
 
