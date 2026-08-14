@@ -103,8 +103,8 @@ everything else is refused:
 
 Nothing in the reader consults a locale, an environment variable or the machine's
 regional settings, so a document reads identically wherever it is read. That is
-the property this section exists for, and it is the reason the grammar is written
-out rather than delegated to a general-purpose number parser.
+the property the grammar is written out for, instead of being delegated to a
+general-purpose number parser.
 
 A value has to lie between -20 dB and 150 dB. That range is a judgement of this
 project rather than anything from the standard: it is wide enough to hold

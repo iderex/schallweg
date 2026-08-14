@@ -104,7 +104,8 @@ against the run.
 **Not comparable.** The source did not publish the inputs as numbers. Where a
 value has to be read off a plotted curve, it has no printed precision, so the
 rule above has nothing to compute a tolerance from, and a tolerance invented to
-cover plot reading would be the number this document exists to avoid. Such a case
+cover plot reading would be an invented number, which is what the rule above
+keeps out. Such a case
 is encoded, run and reported, and it never decides anything. The survey records
 that the timber case studies are in this position, which is most of the
 building-level material found.

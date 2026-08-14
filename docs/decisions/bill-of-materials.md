@@ -54,8 +54,7 @@ binary.
 
 The database's document lists every file under the record tree with its checksum,
 not only the files a route recognised as records. A file nobody listed, sitting
-inside an artefact somebody downloaded, is the shape this document exists to
-refuse.
+inside an artefact somebody downloaded, is the shape that listing refuses.
 
 ## The means
 
@@ -80,10 +79,10 @@ The cost is real and is the next section.
 ## What the document does not say, and what nothing here checks
 
 No licence. Every licence field is `NOASSERTION`, which is the specification's
-word for "this document does not say". That is the honest value rather than a
-placeholder: this repository has no licence file, the choice is an open
-maintainer decision on issue #1, and a document asserting a licence would be
-asserting something nobody has decided.
+word for "this document does not say". That is the honest value and not a
+placeholder: this repository has no licence file, issue #1 holds that choice and
+nobody has taken it, and a document asserting a licence would be asserting
+something nobody has decided.
 
 No vulnerabilities. A bill of materials is a list of what is there. Whether any
 of it has a known advisory is a different question and a different route.

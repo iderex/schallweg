@@ -156,10 +156,9 @@ gh api repos/iderex/schallweg/rulesets/20527526 --jq '{types: [.rules[].type]}'
 {"types":["deletion","non_fast_forward","pull_request"]}
 ```
 
-Asking for that to change is issue #112. This section exists before the change
-rather than after it, because the cost of arriving at a required signature
-without having set one up falls on whoever is in the middle of a branch at the
-time.
+Asking for that to change is issue #112. Set signing up before that lands, not
+after: the cost of arriving at a required signature without having set one up
+falls on whoever is in the middle of a branch at the time.
 
 Signing with an SSH key you already have is the shortest route:
 
@@ -189,7 +188,8 @@ unsigned commit anywhere in it refuses the merge, however old it is and whoever
 made it. A branch that already contains one is repaired by rebuilding it: create
 a fresh branch from the base, cherry-pick each commit onto it with signing on,
 and compare `git patch-id` on both sides to show the content is identical. That
-is more work than it sounds like and it is the reason this section is here early.
+is more work than it sounds like. Turn signing on before the first commit of a
+branch, not after the branch exists.
 
 Signing fails sometimes. An agent is not running, a key has been rotated, a
 smartcard is not present. The failure arrives in the middle of the work and the
