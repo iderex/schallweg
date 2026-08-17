@@ -58,3 +58,9 @@ removed, and what replaced it, since something usually can replace it. Where the
 report turns out to be about something this project may lawfully do, the answer
 says that, in public, and the material comes back with the reasoning beside it.
 Removal first is not an admission and the record says so either way.
+
+## License
+
+AGPL-3.0, copyright 2026 Nils Lehnen.
+
+The full text is in [LICENSE](LICENSE).
